@@ -71,8 +71,8 @@ final class FloatingPanel: NSPanel {
             newFrame.origin.x -= widthDiff / 2 // Center horizontally when expanding
 
             NSAnimationContext.runAnimationGroup { ctx in
-                ctx.duration = 0.3
-                ctx.timingFunction = CAMediaTimingFunction(name: .easeOut)
+                ctx.duration = 0.5
+                ctx.timingFunction = CAMediaTimingFunction(name: .easeInEaseOut)
                 self.animator().setFrame(newFrame, display: true)
             }
         }

@@ -27,8 +27,8 @@ struct PillContentView: View {
                 }
             }
         }
-        .animation(.spring(response: 0.35, dampingFraction: 0.75), value: showOptions)
-        .animation(.spring(response: 0.3, dampingFraction: 0.8), value: state)
+        .animation(.spring(response: 0.5, dampingFraction: 0.75), value: showOptions)
+        .animation(.easeInOut(duration: 0.4), value: state)
     }
 }
 

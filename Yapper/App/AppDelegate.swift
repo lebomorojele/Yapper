@@ -144,8 +144,22 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         dictationController.onFinalTranscript = { [weak self] _ in
             Task { @MainActor in
-                self?.recordingState = .idle
-                self?.floatingPanel?.hidePanel()
+                guard let self else { return }
+                // Go: idle → processing → complete → idle
+                self.recordingState = .processing
+                
+                Task {
+                    try? await Task.sleep(nanoseconds: 1_500_000_000)
+                    await MainActor.run {
+                        self.recordingState = .complete
+                        SoundManager.shared.play(.processingComplete)
+                    }
+                    try? await Task.sleep(nanoseconds: 1_500_000_000)
+                    await MainActor.run {
+                        self.recordingState = .idle
+                        self.floatingPanel?.hidePanel()
+                    }
+                }
             }
         }
 

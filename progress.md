@@ -41,22 +41,32 @@ Match macOS System Preferences exactly:
 - [ ] Mac App Store?
 
 ### Paywall Strategy
-- [ ] Free tier: Basic dictation (unlimited?)
+- [ ] Free tier: Basic dictation (unlimited)
 - [ ] Paid tier: Meeting transcription + AI summaries
-- [ ] Per-month or per-meeting pricing?
+- [ ] "Bring Your Own Key" - User provides OpenAI/Anthropic API key
+- [ ] Optional local: Llama.cpp, Ollama, MLX (privacy-first)
 
 ### AI Integration
+- [ ] Bring Your Own Key (BYOK) - Enter API key in Settings
 - [ ] OpenAI API for summaries (GPT-4o)
 - [ ] Anthropic API (Claude)
-- [ ] Local model (privacy-first)?
+- [ ] Local model (Llama.cpp/Ollama/MLX) - Optional
 - [ ] Meeting notes generation
 - [ ] Action item extraction
 
-### Pareto Features (10x Impact)
-1. ** Meeting Transcription** - Record + transcript in background
-2. ** One-tap summarization** - Turn meeting into bullet points
-3. ** Smart templates** - Email/Slack from dictation
-4. ** Multi-language** - Real-time translation support
+### Pareto Features (Ranked by 10x Impact)
+
+#### Tier 1: Must Have (10x)
+1. ** Meeting Transcription** - Background record + searchable transcript
+2. ** One-tap Summaries** - Meeting → bullet points in 1 click
+
+#### Tier 2: Should Have (5x)
+3. ** Smart Templates** - dictation → Email/Slack with one tap
+4. ** Action Items** - Auto-extract tasks from meetings
+
+#### Tier 3: Nice to Have (2x)
+5. ** Multi-language** - Real-time translation
+6. ** Private Local AI** - Ollama/MLX integration
 
 ### User Experience
 - Onboarding flow for permissions
