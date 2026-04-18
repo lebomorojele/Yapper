@@ -76,6 +76,7 @@ final class DictationController: @unchecked Sendable {
         let settings = SettingsManager.shared.settings
         audioEngine.silenceThreshold = settings.silenceThreshold
         audioEngine.silenceDetectionEnabled = settings.silenceDetectionEnabled
+        audioEngine.inputGain = settings.inputGain
 
         transcriber.start()
         audioEngine.start()

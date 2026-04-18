@@ -5,194 +5,298 @@ struct PillContentView: View {
     var partialTranscript: String = ""
     var showOptions: Bool = false
     var audioLevel: Float = 0
+    var recordingStartTime: Date? = nil
     var onOptionSelected: (SmartModeOption) -> Void = { _ in }
 
     var body: some View {
-        VStack(spacing: 0) {
-            mainPill
+        Group {
             if showOptions {
-                optionsPanel
-                    .transition(.opacity.combined(with: .move(edge: .top)))
+                SmartRecordOptions(onOptionSelected: onOptionSelected)
+            } else {
+                switch state {
+                case .idle:
+                    IdleView()
+                case .recording:
+                    SimpleSmartRecording(transcript: partialTranscript, audioLevel: audioLevel, startTime: recordingStartTime ?? Date())
+                case .recordingMeeting:
+                    MeetingRecordingView(audioLevel: audioLevel, startTime: recordingStartTime ?? Date())
+                case .processing:
+                    ProcessingView()
+                case .complete:
+                    ProcessingComplete()
+                }
             }
         }
-        .frame(width: 260)
-        .background(
-            RoundedRectangle(cornerRadius: 24)
-                .fill(.black.opacity(0.88))
-        )
-        .clipShape(RoundedRectangle(cornerRadius: 24))
+        .animation(.spring(response: 0.35, dampingFraction: 0.75), value: showOptions)
+        .animation(.spring(response: 0.3, dampingFraction: 0.8), value: state)
     }
+}
 
-    // MARK: - Main Pill
+// MARK: - Idle State
+struct IdleView: View {
+    var body: some View {
+        Rectangle()
+            .foregroundColor(.clear)
+            .frame(width: 317, height: 40)
+            .background(.black)
+            .cornerRadius(22)
+    }
+}
 
-    @ViewBuilder
-    private var mainPill: some View {
+// MARK: - Recording State
+struct SimpleSmartRecording: View {
+    let transcript: String
+    let audioLevel: Float
+    let startTime: Date
+
+    var body: some View {
         HStack(spacing: 12) {
-            indicator
-            label
-            Spacer()
+            FigmaWaveform(audioLevel: audioLevel)
+            
+            Text(transcript.isEmpty ? "Listening..." : transcript)
+                .font(.custom("SF Pro", size: 14))
+                .lineLimit(1)
+                .truncationMode(.tail)
+                .foregroundColor(Color(red: 0.64, green: 0.64, blue: 0.66))
+                .frame(maxWidth: .infinity, alignment: .leading)
+            
+            TimelineView(.periodic(from: startTime, by: 1.0)) { timeline in
+                let elapsed = max(0, timeline.date.timeIntervalSince(startTime))
+                Text(timeString(from: elapsed))
+                    .font(.custom("SF Pro", size: 14).weight(.medium))
+                    .monospacedDigit()
+                    .foregroundColor(Color(red: 0.98, green: 0.21, blue: 0.20))
+            }
         }
         .padding(.horizontal, 16)
-        .padding(.vertical, 14)
+        .padding(.vertical, 12)
+        .frame(width: 317, height: 44)
+        .background(.black)
+        .cornerRadius(22)
     }
-
-    @ViewBuilder
-    private var indicator: some View {
-        switch state {
-        case .idle:
-            EmptyView()
-        case .recording:
-            WaveformView(audioLevel: audioLevel)
-        case .processing:
-            ProgressView()
-                .scaleEffect(0.7)
-                .progressViewStyle(CircularProgressViewStyle(tint: .white))
-        }
-    }
-
-    @ViewBuilder
-    private var label: some View {
-        switch state {
-        case .idle:
-            EmptyView()
-        case .recording(let smart):
-            VStack(alignment: .leading, spacing: 2) {
-                Text(smart ? "Smart Mode" : "Listening...")
-                    .font(.system(size: 13, weight: .semibold))
-                    .foregroundStyle(.white)
-                if !partialTranscript.isEmpty {
-                    Text(partialTranscript)
-                        .font(.system(size: 11))
-                        .foregroundStyle(.white.opacity(0.6))
-                        .lineLimit(1)
-                        .truncationMode(.tail)
-                }
-            }
-        case .processing:
-            Text("Processing...")
-                .font(.system(size: 13, weight: .semibold))
-                .foregroundStyle(.white)
-        }
-    }
-
-    // MARK: - Smart Mode Options
-
-    @ViewBuilder
-    private var optionsPanel: some View {
-        VStack(spacing: 8) {
-            Divider()
-                .background(.white.opacity(0.2))
-
-            LazyVGrid(
-                columns: [GridItem(.flexible()), GridItem(.flexible())],
-                spacing: 8
-            ) {
-                ForEach(SmartModeOption.allCases.filter { $0 != .cancel }) { option in
-                    Button {
-                        onOptionSelected(option)
-                    } label: {
-                        HStack(spacing: 6) {
-                            Image(systemName: option.icon)
-                                .font(.system(size: 11))
-                            Text(option.rawValue)
-                                .font(.system(size: 12, weight: .medium))
-                        }
-                        .foregroundStyle(.white)
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 10)
-                        .background(
-                            RoundedRectangle(cornerRadius: 8)
-                                .fill(.white.opacity(0.12))
-                        )
-                    }
-                    .buttonStyle(.plain)
-                }
-            }
-
-            Button {
-                onOptionSelected(.cancel)
-            } label: {
-                Text("Cancel")
-                    .font(.system(size: 12, weight: .medium))
-                    .foregroundStyle(.white.opacity(0.5))
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 6)
-            }
-            .buttonStyle(.plain)
-        }
-        .padding(.horizontal, 16)
-        .padding(.bottom, 12)
+    
+    private func timeString(from interval: TimeInterval) -> String {
+        let minutes = Int(interval) / 60
+        let seconds = Int(interval) % 60
+        return String(format: "%02d:%02d", minutes, seconds)
     }
 }
 
-// MARK: - Waveform Visualization
-
-struct WaveformView: View {
+// MARK: - Meeting Recording State
+struct MeetingRecordingView: View {
     let audioLevel: Float
-    private let barCount = 5
+    let startTime: Date
 
     var body: some View {
-        TimelineView(.animation(minimumInterval: 0.08)) { timeline in
-            HStack(spacing: 2) {
-                ForEach(0..<barCount, id: \.self) { index in
-                    WaveformBar(
-                        audioLevel: audioLevel,
-                        index: index,
-                        time: timeline.date.timeIntervalSinceReferenceDate
-                    )
-                }
+        HStack(spacing: 12) {
+            FigmaWaveform(audioLevel: audioLevel)
+            
+            Text("Recording meeting...")
+                .font(.custom("SF Pro", size: 14))
+                .foregroundColor(Color(red: 0.64, green: 0.64, blue: 0.66))
+                .frame(maxWidth: .infinity, alignment: .leading)
+            
+            TimelineView(.periodic(from: startTime, by: 1.0)) { timeline in
+                let elapsed = max(0, timeline.date.timeIntervalSince(startTime))
+                Text(timeString(from: elapsed))
+                    .font(.custom("SF Pro", size: 14).weight(.medium))
+                    .monospacedDigit()
+                    .foregroundColor(Color(red: 0.98, green: 0.21, blue: 0.20))
             }
         }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 12)
+        .frame(width: 317, height: 44)
+        .background(.black)
+        .cornerRadius(22)
+    }
+    
+    private func timeString(from interval: TimeInterval) -> String {
+        let minutes = Int(interval) / 60
+        let seconds = Int(interval) % 60
+        return String(format: "%02d:%02d", minutes, seconds)
     }
 }
 
-struct WaveformBar: View {
+// MARK: - Figma Waveform
+struct FigmaWaveform: View {
     let audioLevel: Float
+    
+    var body: some View {
+        HStack(spacing: 1.5) {
+            WaveBar(level: audioLevel, index: 0, minH: 3, maxH: 10)
+            WaveBar(level: audioLevel, index: 1, minH: 4, maxH: 14)
+            WaveBar(level: audioLevel, index: 2, minH: 5, maxH: 17)
+            WaveBar(level: audioLevel, index: 3, minH: 3, maxH: 10)
+            WaveBar(level: audioLevel, index: 4, minH: 4, maxH: 12)
+            WaveBar(level: audioLevel, index: 5, minH: 2, maxH: 8).opacity(0.6)
+            WaveBar(level: 0, index: 6, minH: 2, maxH: 2).opacity(0.4).foregroundColor(Color(red: 0.35, green: 0.35, blue: 0.35))
+            WaveBar(level: 0, index: 7, minH: 2, maxH: 2).opacity(0.4).foregroundColor(Color(red: 0.35, green: 0.35, blue: 0.35))
+            WaveBar(level: 0, index: 8, minH: 2, maxH: 2).opacity(0.4).foregroundColor(Color(red: 0.35, green: 0.35, blue: 0.35))
+        }
+        .frame(width: 39)
+    }
+}
+
+struct WaveBar: View {
+    let level: Float
     let index: Int
-    let time: TimeInterval
-
+    let minH: CGFloat
+    let maxH: CGFloat
+    
     var body: some View {
-        RoundedRectangle(cornerRadius: 1.5)
-            .fill(.red)
-            .frame(width: 3, height: barHeight)
+        Rectangle()
+            .foregroundColor(Color(red: 0.98, green: 0.21, blue: 0.20))
+            .frame(width: 2, height: barHeight)
+            .cornerRadius(2.44)
             .animation(.easeInOut(duration: 0.1), value: barHeight)
     }
-
+    
     private var barHeight: CGFloat {
-        let minH: CGFloat = 4
-        let maxH: CGFloat = 20
-        let level = CGFloat(max(0.05, audioLevel))
-
-        // Each bar oscillates at a slightly different phase/frequency
-        let freq = 2.0 + Double(index) * 0.7
-        let phase = Double(index) * 0.8
-        let wave = sin(time * freq + phase)
-
-        // Combine audio level with oscillation for organic movement
-        let amplitude = minH + (maxH - minH) * level * (0.4 + 0.6 * CGFloat((wave + 1) / 2))
+        if maxH == minH { return minH } // Static dots
+        let boost = CGFloat(max(0, level))
+        let amplitude = minH + (maxH - minH) * boost * 1.5
         return max(minH, min(maxH, amplitude))
     }
 }
 
-struct SmartModeButton: View {
+// MARK: - Processing State
+struct ProcessingView: View {
+    @State private var offset: CGFloat = -14
+    
+    var body: some View {
+        HStack {
+            Text("Processing")
+                .font(.custom("SF Pro", size: 14))
+                .foregroundColor(.white)
+            
+            Spacer()
+            
+            ZStack(alignment: .leading) {
+                Rectangle()
+                    .foregroundColor(Color(red: 0.36, green: 0.36, blue: 0.36))
+                    .frame(width: 36, height: 5)
+                    .cornerRadius(16)
+                
+                Rectangle()
+                    .foregroundColor(Color(red: 0.85, green: 0.85, blue: 0.85))
+                    .frame(width: 20, height: 5)
+                    .cornerRadius(16)
+                    .offset(x: offset)
+            }
+            .frame(width: 36, height: 5)
+            .clipShape(RoundedRectangle(cornerRadius: 16))
+        }
+        .padding(.horizontal, 16)
+        .frame(width: 317, height: 44)
+        .background(.black)
+        .cornerRadius(22)
+        .onAppear {
+            withAnimation(.easeInOut(duration: 0.8).repeatForever(autoreverses: true)) {
+                offset = 16
+            }
+        }
+    }
+}
+
+// MARK: - Processing Complete State
+struct ProcessingComplete: View {
+    @State private var checkScale: CGFloat = 0.01
+    
+    var body: some View {
+        HStack {
+            Text("Complete")
+                .font(.custom("SF Pro", size: 14))
+                .foregroundColor(.white)
+            
+            Spacer()
+            
+            Image(systemName: "checkmark.circle.fill")
+                .font(.system(size: 20))
+                .foregroundColor(Color(red: 0.94, green: 0.94, blue: 0.96))
+                .scaleEffect(checkScale)
+        }
+        .padding(.horizontal, 16)
+        .frame(width: 317, height: 44)
+        .background(.black)
+        .cornerRadius(22)
+        .onAppear {
+            withAnimation(.spring(response: 0.4, dampingFraction: 0.6)) {
+                checkScale = 1.0
+            }
+        }
+    }
+}
+
+// MARK: - Smart Options State
+struct SmartRecordOptions: View {
+    var onOptionSelected: (SmartModeOption) -> Void
+    
+    var body: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            HStack(spacing: 16) {
+                Text("􀖀")
+                    .font(.custom("SF Pro Text", size: 28).weight(.bold))
+                    .foregroundColor(Color(red: 0.22, green: 0.75, blue: 0.35))
+                
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Finished Yapping?")
+                        .font(.custom("SF Pro", size: 16).weight(.semibold))
+                        .foregroundColor(.white)
+                    Text("Would you like to change the tone of your yap?")
+                        .font(.custom("SF Pro", size: 14))
+                        .foregroundColor(Color(red: 0.51, green: 0.51, blue: 0.51))
+                }
+            }
+            .padding(.horizontal, 8)
+            
+            VStack(spacing: 12) {
+                HStack(spacing: 12) {
+                    SmartButton(title: "Polish", option: .polish, action: { onOptionSelected(.polish) })
+                    SmartButton(title: "Chat", option: .chat, action: { onOptionSelected(.chat) })
+                }
+                HStack(spacing: 12) {
+                    SmartButton(title: "Email", option: .email, action: { onOptionSelected(.email) })
+                    SmartButton(title: "Prompt", option: .prompt, action: { onOptionSelected(.prompt) })
+                }
+                
+                Button {
+                    onOptionSelected(.cancel)
+                } label: {
+                    Text("Don’t change (Fn)")
+                        .font(.custom("SF Pro", size: 16).weight(.medium))
+                        .foregroundColor(Color(red: 0.98, green: 0.21, blue: 0.20))
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 14)
+                        .background(Color(red: 0.11, green: 0.06, blue: 0.07))
+                        .cornerRadius(300)
+                }
+                .buttonStyle(.plain)
+            }
+        }
+        .padding(.horizontal, 24)
+        .padding(.vertical, 24)
+        .frame(width: 367)
+        .background(.black)
+        .cornerRadius(42)
+        .shadow(color: Color.black.opacity(0.25), radius: 16, y: 8)
+    }
+}
+
+struct SmartButton: View {
+    let title: String
     let option: SmartModeOption
     let action: () -> Void
-
+    
     var body: some View {
         Button(action: action) {
-            HStack(spacing: 6) {
-                Image(systemName: option.icon)
-                    .font(.system(size: 11))
-                Text(option.rawValue)
-                    .font(.system(size: 12, weight: .medium))
-            }
-            .foregroundStyle(.white)
-            .frame(maxWidth: .infinity)
-            .padding(.vertical, 10)
-            .background(
-                RoundedRectangle(cornerRadius: 8)
-                    .fill(.white.opacity(0.12))
-            )
+            Text(title)
+                .font(.custom("SF Pro", size: 16).weight(.semibold))
+                .foregroundColor(.white)
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 14)
+                .background(Color(red: 0.17, green: 0.17, blue: 0.18))
+                .cornerRadius(300)
         }
         .buttonStyle(.plain)
     }

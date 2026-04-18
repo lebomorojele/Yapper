@@ -12,6 +12,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var currentTranscript = ""
     private var isSmartMode = false
     private var currentAudioLevel: Float = 0
+    private var recordingStartTime: Date? = nil
     private var modelReady = false
 
     // MARK: - App Lifecycle
@@ -33,10 +34,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
 
         if let button = statusItem?.button {
-            button.image = NSImage(
-                systemSymbolName: "waveform",
-                accessibilityDescription: "Yapper"
-            )
+            // Use icon1.png for menu bar
+            let iconPath = Bundle.main.path(forResource: "icon1", ofType: "png") 
+                ?? NSHomeDirectory() + "/Documents/projects/Yapper/icon1.png"
+            button.image = NSImage(contentsOfFile: iconPath)
+            button.image?.size = NSSize(width: 18, height: 18)
+            button.image?.isTemplate = true
         }
 
         let menu = NSMenu()
@@ -58,6 +61,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         )
         prefsItem.keyEquivalentModifierMask = .command
         menu.addItem(prefsItem)
+
+        #if DEBUG
+        let catalogItem = NSMenuItem(
+            title: "UI Design Catalog...",
+            action: #selector(openDesignCatalog),
+            keyEquivalent: "d"
+        )
+        catalogItem.keyEquivalentModifierMask = [.command, .shift]
+        menu.addItem(catalogItem)
+        #endif
 
         menu.addItem(.separator())
 
@@ -83,6 +96,42 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             }
         }
         hotkeyManager.start()
+    }
+
+    // MARK: - Gesture Handling
+
+    private func handleGesture(_ gesture: InputGesture) {
+        switch gesture {
+        case .singleTap:
+            if case .recording = recordingState {
+                stopRecording()
+            } else if recordingState == .recordingMeeting {
+                stopMeetingRecording()
+            } else if recordingState == .idle {
+                startRecording(smartMode: false)
+            }
+
+        case .doubleTap:
+            if case .recording = recordingState {
+                stopRecording()
+            } else if recordingState == .recordingMeeting {
+                stopMeetingRecording()
+            }
+            startRecording(smartMode: true)
+
+        case .holdStart:
+            if recordingState == .idle {
+                startMeetingRecording()
+            } else if recordingState == .recordingMeeting {
+                stopMeetingRecording()
+            } else if case .recording = recordingState {
+                stopRecording()
+            }
+
+        case .holdEnd:
+            // Release after hold means we stay in the meeting recording until tapped again
+            break
+        }
     }
 
     private func setupDictation() {
@@ -139,32 +188,57 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
     }
 
-    // MARK: - Gesture Handling
+    // MARK: - Meeting Mode (Stub)
 
-    private func handleGesture(_ gesture: InputGesture) {
-        switch gesture {
-        case .singleTap:
-            if case .recording = recordingState {
-                stopRecording()
-            } else if recordingState == .idle {
-                startRecording(smartMode: false)
+    private func startMeetingRecording() {
+        guard modelReady else { return }
+        recordingState = .recordingMeeting
+        SoundManager.shared.play(.meetingStart)
+        currentTranscript = ""
+        currentAudioLevel = 0
+        recordingStartTime = Date()
+
+        // In a real implementation, this would likely bypass `dictationController` and write directly to an audio file
+        // or a chunked transcription pipeline optimized for 1+ hour meetings.
+        print("[Yapper] 🎙️ Started Meeting Recording")
+        
+        floatingPanel?.showAtTopCenter()
+        updateUI()
+    }
+
+    private func stopMeetingRecording() {
+        guard recordingState == .recordingMeeting else { return }
+        recordingState = .processing
+        
+        print("[Yapper] 🛑 Stopped Meeting Recording")
+        SoundManager.shared.play(.meetingStop)
+        
+        floatingPanel?.updateContent(
+            state: .processing,
+            partialTranscript: "",
+            showOptions: false,
+            recordingStartTime: nil,
+            onOptionSelected: { _ in }
+        )
+        
+        // Processing -> Complete -> Idle
+        Task {
+            // Process for 2 seconds
+            try? await Task.sleep(nanoseconds: 2_000_000_000)
+            
+            await MainActor.run {
+                self.recordingState = .complete
+            SoundManager.shared.play(.processingComplete)
             }
-
-        case .doubleTap:
-            if case .recording = recordingState {
-                stopRecording()
+            
+            // Show complete state for 1.5 seconds
+            try? await Task.sleep(nanoseconds: 1_500_000_000)
+            
+            await MainActor.run {
+                print("[Yapper] 📝 Meeting Summary Generated")
+                self.recordingState = .idle
+                self.floatingPanel?.hidePanel()
             }
-            startRecording(smartMode: true)
-
-        case .holdStart:
-            if recordingState == .idle {
-                startRecording(smartMode: false)
-            }
-
-        case .holdEnd:
-            // Spec: hold starts, release continues, tap to stop
-            // holdEnd intentionally does nothing
-            break
         }
     }
 
@@ -176,9 +250,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             return
         }
         recordingState = .recording(isSmartMode: smartMode)
+        SoundManager.shared.play(smartMode ? .smartMenuOpen : .recordingStart)
         isSmartMode = smartMode
         currentTranscript = ""
         currentAudioLevel = 0
+        recordingStartTime = Date()
 
         dictationController.startRecording(smartMode: smartMode)
         floatingPanel?.showAtTopCenter()
@@ -186,6 +262,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     private func stopRecording() {
+        SoundManager.shared.play(.recordingStop)
         dictationController.stopRecording()
         // Remaining state updates happen in onRecordingStopped callback
     }
@@ -193,11 +270,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     // MARK: - Smart Mode
 
     private func showSmartModeOptions() {
+        SoundManager.shared.play(.smartMenuOpen)
         floatingPanel?.updateContent(
             state: .idle,
             partialTranscript: currentTranscript,
             showOptions: true,
             audioLevel: 0,
+            recordingStartTime: recordingStartTime,
             onOptionSelected: { [weak self] option in
                 self?.handleSmartModeSelection(option)
             }
@@ -216,6 +295,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             state: .processing,
             partialTranscript: "",
             showOptions: false,
+            recordingStartTime: nil,
             onOptionSelected: { _ in }
         )
 
@@ -226,13 +306,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     // MARK: - UI Updates
 
     private func updateUI() {
-        guard case .recording = recordingState else { return }
+        if recordingState == .idle || recordingState == .processing { return }
 
         floatingPanel?.updateContent(
             state: recordingState,
             partialTranscript: currentTranscript,
             showOptions: false,
             audioLevel: currentAudioLevel,
+            recordingStartTime: recordingStartTime,
             onOptionSelected: { _ in }
         )
     }
@@ -281,14 +362,22 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     @objc private func toggleRecording() {
         if case .recording = recordingState {
             stopRecording()
+        } else if recordingState == .recordingMeeting {
+            stopMeetingRecording()
         } else {
             startRecording(smartMode: false)
         }
     }
 
     @objc private func openPreferences() {
-        // Preferences window — v0.2
+        SettingsWindowController.shared.show()
     }
+
+    #if DEBUG
+    @objc private func openDesignCatalog() {
+        DesignCatalogWindowController.shared.show()
+    }
+    #endif
 
     @objc private func quitApp() {
         hotkeyManager.stop()

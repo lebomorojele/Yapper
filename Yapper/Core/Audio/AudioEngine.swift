@@ -10,6 +10,7 @@ final class AudioEngine: @unchecked Sendable {
 
     var silenceThreshold: TimeInterval = 1.5
     var silenceDetectionEnabled: Bool = true
+    var inputGain: Float = 1.0
 
     private var engine: AVAudioEngine?
     private var isRunning = false
@@ -32,6 +33,11 @@ final class AudioEngine: @unchecked Sendable {
 
     func start() {
         guard !isRunning else { return }
+        
+        let settings = SettingsManager.shared.settings
+        self.silenceThreshold = settings.silenceThreshold
+        self.silenceDetectionEnabled = settings.silenceDetectionEnabled
+        self.inputGain = settings.inputGain
 
         let eng = AVAudioEngine()
         engine = eng
@@ -117,7 +123,9 @@ final class AudioEngine: @unchecked Sendable {
         }
 
         guard !samples.isEmpty else { return }
-        onAudio?(samples)
+        
+        let processedSamples = inputGain > 1.0 ? samples.map { $0 * inputGain } : samples
+        onAudio?(processedSamples)
     }
 
     private func calculateRMS(_ buffer: AVAudioPCMBuffer) -> Float {
@@ -126,7 +134,7 @@ final class AudioEngine: @unchecked Sendable {
         guard count > 0 else { return 0 }
         var sum: Float = 0
         for i in 0..<count {
-            let s = data[i]
+            let s = data[i] * inputGain // Apply gain here
             sum += s * s
         }
         return sqrt(sum / Float(count))

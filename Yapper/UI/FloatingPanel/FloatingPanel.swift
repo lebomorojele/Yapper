@@ -6,7 +6,7 @@ final class FloatingPanel: NSPanel {
 
     init() {
         super.init(
-            contentRect: NSRect(x: 0, y: 0, width: 260, height: 48),
+            contentRect: NSRect(x: 0, y: 0, width: 317, height: 44),
             styleMask: [.nonactivatingPanel, .fullSizeContentView],
             backing: .buffered,
             defer: false
@@ -21,7 +21,7 @@ final class FloatingPanel: NSPanel {
         isFloatingPanel = true
         level = .floating
         collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
-        isMovableByWindowBackground = false
+        isMovableByWindowBackground = true // Allows dragging anywhere on the background
         hidesOnDeactivate = false
         backgroundColor = .clear
         isOpaque = false
@@ -33,7 +33,7 @@ final class FloatingPanel: NSPanel {
     private func setupContent() {
         let view = PillContentView()
         hostingView = NSHostingView(rootView: view)
-        hostingView?.frame = NSRect(x: 0, y: 0, width: 260, height: 48)
+        hostingView?.frame = NSRect(x: 0, y: 0, width: 317, height: 44)
         self.contentView = hostingView
     }
 
@@ -44,6 +44,7 @@ final class FloatingPanel: NSPanel {
         partialTranscript: String,
         showOptions: Bool,
         audioLevel: Float = 0,
+        recordingStartTime: Date? = nil,
         onOptionSelected: @escaping (SmartModeOption) -> Void
     ) {
         let view = PillContentView(
@@ -51,21 +52,26 @@ final class FloatingPanel: NSPanel {
             partialTranscript: partialTranscript,
             showOptions: showOptions,
             audioLevel: audioLevel,
+            recordingStartTime: recordingStartTime,
             onOptionSelected: onOptionSelected
         )
         hostingView?.rootView = view
 
-        // Animate panel height for options
-        let targetHeight: CGFloat = showOptions ? 200 : 48
+        let targetWidth: CGFloat = showOptions ? 367 : 317
+        let targetHeight: CGFloat = showOptions ? 280 : 44
 
-        if abs(frame.height - targetHeight) > 1 {
+        if abs(frame.height - targetHeight) > 1 || abs(frame.width - targetWidth) > 1 {
             var newFrame = frame
-            let diff = targetHeight - newFrame.height
+            let heightDiff = targetHeight - newFrame.height
+            let widthDiff = targetWidth - newFrame.width
+            
             newFrame.size.height = targetHeight
-            newFrame.origin.y -= diff
+            newFrame.size.width = targetWidth
+            newFrame.origin.y -= heightDiff
+            newFrame.origin.x -= widthDiff / 2 // Center horizontally when expanding
 
             NSAnimationContext.runAnimationGroup { ctx in
-                ctx.duration = 0.2
+                ctx.duration = 0.3
                 ctx.timingFunction = CAMediaTimingFunction(name: .easeOut)
                 self.animator().setFrame(newFrame, display: true)
             }
@@ -75,8 +81,8 @@ final class FloatingPanel: NSPanel {
     func showAtTopCenter() {
         guard let screen = NSScreen.main else { return }
         let visibleFrame = screen.visibleFrame
-        let panelWidth: CGFloat = 260
-        let panelHeight: CGFloat = 48
+        let panelWidth: CGFloat = 317
+        let panelHeight: CGFloat = 44
 
         let x = visibleFrame.midX - panelWidth / 2
         let y = visibleFrame.maxY - panelHeight - 50

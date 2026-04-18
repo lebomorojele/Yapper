@@ -22,6 +22,11 @@ let package = Package(
                 "Support/Info.plist",
                 "Assets.xcassets"
             ]
+        ),
+        .testTarget(
+            name: "YapperTests",
+            dependencies: ["Yapper"],
+            path: "YapperTests"
         )
     ]
 )

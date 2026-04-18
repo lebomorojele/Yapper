@@ -5,7 +5,9 @@ import Foundation
 enum RecordingState: Equatable, Sendable {
     case idle
     case recording(isSmartMode: Bool)
+    case recordingMeeting
     case processing
+    case complete
 }
 
 // MARK: - Input Gesture
@@ -21,20 +23,30 @@ enum InputGesture: Sendable {
 
 enum SmartModeOption: String, CaseIterable, Identifiable, Sendable {
     case email = "Email"
-    case slack = "Slack"
-    case codePrompt = "Code"
-    case cleanGrammar = "Clean"
-    case cancel = "Cancel"
+    case chat = "Chat"
+    case prompt = "Prompt"
+    case polish = "Polish"
+    case cancel = "Don’t change (Fn)"
 
     var id: String { rawValue }
 
     var icon: String {
         switch self {
         case .email: return "envelope"
-        case .slack: return "message"
-        case .codePrompt: return "chevron.left.forwardslash.chevron.right"
-        case .cleanGrammar: return "textformat"
+        case .chat: return "message"
+        case .prompt: return "chevron.left.forwardslash.chevron.right"
+        case .polish: return "wand.and.stars"
         case .cancel: return "xmark"
+        }
+    }
+
+    var shortcut: String {
+        switch self {
+        case .email: return "e"
+        case .chat: return "c"
+        case .prompt: return "r"
+        case .polish: return "p"
+        case .cancel: return ""
         }
     }
 
@@ -42,11 +54,11 @@ enum SmartModeOption: String, CaseIterable, Identifiable, Sendable {
         switch self {
         case .email:
             return "Rewrite the following as a professional email. Return ONLY the email text, no explanations:\n\n{input}"
-        case .slack:
-            return "Make the following concise and friendly for Slack. Return ONLY the message, no explanations:\n\n{input}"
-        case .codePrompt:
+        case .chat:
+            return "Make the following concise and friendly for a chat like Slack. Return ONLY the message, no explanations:\n\n{input}"
+        case .prompt:
             return "Convert the following into a clear, detailed prompt for an AI coding assistant. Return ONLY the prompt, no explanations:\n\n{input}"
-        case .cleanGrammar:
+        case .polish:
             return "Fix grammar, punctuation, and clarity in the following. Return ONLY the corrected text, no explanations:\n\n{input}"
         case .cancel:
             return ""
@@ -67,6 +79,7 @@ struct Settings: Codable, Sendable {
     var insertionMethod: InsertionMethod = .axuiElement
     var silenceThreshold: TimeInterval = 1.5
     var silenceDetectionEnabled: Bool = true
+    var inputGain: Float = 1.0
     var openAIAPIKey: String?
     var llmModel: String = "gpt-4o-mini"
 
