@@ -1,12 +1,27 @@
 import Foundation
 import AVFoundation
-
 @preconcurrency import AVFAudio
 
-final class AudioEngine: @unchecked Sendable {
-    var onAudio: (@Sendable ([Float]) -> Void)?
-    var onSilence: (@Sendable () -> Void)?
-    var onLevel: (@Sendable (Float) -> Void)?
+final class AudioEngine: AudioEngineProtocol, @unchecked Sendable {
+    private let queue = DispatchQueue(label: "com.yapper.audioengine")
+    
+    private var _onAudio: (@Sendable ([Float]) -> Void)?
+    var onAudio: (@Sendable ([Float]) -> Void)? {
+        get { queue.sync { _onAudio } }
+        set { queue.sync { _onAudio = newValue } }
+    }
+
+    private var _onSilence: (@Sendable () -> Void)?
+    var onSilence: (@Sendable () -> Void)? {
+        get { queue.sync { _onSilence } }
+        set { queue.sync { _onSilence = newValue } }
+    }
+
+    private var _onLevel: (@Sendable (Float) -> Void)?
+    var onLevel: (@Sendable (Float) -> Void)? {
+        get { queue.sync { _onLevel } }
+        set { queue.sync { _onLevel = newValue } }
+    }
 
     var silenceThreshold: TimeInterval = 1.5
     var silenceDetectionEnabled: Bool = true
@@ -32,40 +47,44 @@ final class AudioEngine: @unchecked Sendable {
     }
 
     func start() {
-        guard !isRunning else { return }
-        
-        let settings = SettingsManager.shared.settings
-        self.silenceThreshold = settings.silenceThreshold
-        self.silenceDetectionEnabled = settings.silenceDetectionEnabled
-        self.inputGain = settings.inputGain
+        queue.sync {
+            guard !isRunning else { return }
+            
+            let settings = SettingsManager.shared.settings
+            self.silenceThreshold = settings.silenceThreshold
+            self.silenceDetectionEnabled = settings.silenceDetectionEnabled
+            self.inputGain = settings.inputGain
 
-        let eng = AVAudioEngine()
-        engine = eng
+            let eng = AVAudioEngine()
+            engine = eng
 
-        let input = eng.inputNode
-        let inputFormat = input.outputFormat(forBus: 0)
+            let input = eng.inputNode
+            let inputFormat = input.outputFormat(forBus: 0)
 
-        input.installTap(onBus: 0, bufferSize: bufferSize, format: inputFormat) { [weak self] buffer, _ in
-            self?.processBuffer(buffer, inputFormat: inputFormat)
-        }
+            input.installTap(onBus: 0, bufferSize: bufferSize, format: inputFormat) { [weak self] buffer, _ in
+                self?.processBuffer(buffer, inputFormat: inputFormat)
+            }
 
-        do {
-            try eng.start()
-            isRunning = true
-            silenceStart = nil
-            print("[AudioEngine] Started — input format: \(inputFormat)")
-        } catch {
-            print("[AudioEngine] Failed to start: \(error)")
+            do {
+                try eng.start()
+                isRunning = true
+                silenceStart = nil
+                print("[AudioEngine] Started — input format: \(inputFormat)")
+            } catch {
+                print("[AudioEngine] Failed to start: \(error)")
+            }
         }
     }
 
     func stop() {
-        guard isRunning else { return }
-        engine?.stop()
-        engine?.inputNode.removeTap(onBus: 0)
-        engine = nil
-        isRunning = false
-        silenceStart = nil
+        queue.sync {
+            guard isRunning else { return }
+            engine?.stop()
+            engine?.inputNode.removeTap(onBus: 0)
+            engine = nil
+            isRunning = false
+            silenceStart = nil
+        }
     }
 
     // MARK: - Internal
@@ -109,7 +128,7 @@ final class AudioEngine: @unchecked Sendable {
             guard let converted = AVAudioPCMBuffer(pcmFormat: targetFormat, frameCapacity: frameCount) else { return }
 
             var error: NSError?
-            let inputBuffer = buffer  // let binding for Swift 6
+            let inputBuffer = buffer
             let inputBlock: AVAudioConverterInputBlock = { _, outStatus in
                 outStatus.pointee = .haveData
                 return inputBuffer
@@ -134,7 +153,7 @@ final class AudioEngine: @unchecked Sendable {
         guard count > 0 else { return 0 }
         var sum: Float = 0
         for i in 0..<count {
-            let s = data[i] * inputGain // Apply gain here
+            let s = data[i] * inputGain
             sum += s * s
         }
         return sqrt(sum / Float(count))
