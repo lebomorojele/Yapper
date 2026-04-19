@@ -9,12 +9,13 @@ final class SettingsWindowController: NSWindowController {
         let hostingController = NSHostingController(rootView: view)
         
         let window = NSWindow(
-            contentRect: NSRect(x: 0, y: 0, width: 400, height: 250),
-            styleMask: [.titled, .closable],
+            contentRect: NSRect(x: 0, y: 0, width: 720, height: 520),
+            styleMask: [.titled, .closable, .resizable],
             backing: .buffered,
             defer: false
         )
-        window.title = "Yapper Preferences"
+        window.minSize = NSSize(width: 720, height: 520)
+        window.title = "Settings"
         window.center()
         window.contentViewController = hostingController
         window.isReleasedWhenClosed = false

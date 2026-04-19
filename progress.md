@@ -12,28 +12,35 @@
 
 ## v0.3 Priorities
 
-### 1. Preferences Window (Native Apple Style)
-Match macOS System Preferences exactly:
-- Grouped sections with headers
-- Native toggles/sliders
-- Footer with version info
-- Apply accessibility/system theming
+### 1. Polish & Tightening (State Transitions)
+- [ ] Fix: UI disappears immediately after paste
+- [ ] Fix: Double-tap logic for initiation/cancellation
+- [ ] Fix: Prevent Fn + Backspace triggering hotkey
+- [ ] Fix: Ensure success pill visibility
+- [ ] Implement: 'Ready' pill (Fn tap start, no action if no speech)
+- [ ] Implement: 'Processing Complete' & 'Clipboard Fallback' pills
+- [ ] Tighten state transitions (Ready -> Record -> Complete)
 
-### 2. Permissions & Accessibility
-- Detect microphone permission status
-- Detect accessibility permission status
-- Show clear indicators in menu bar/icon
-- Prompt to enable if missing
+### 2. Preferences Window (Native Apple Style)
+- [ ] Grouped sections with headers
+- [ ] Native toggles/sliders
+- [ ] Footer with version info
+- [ ] Apply accessibility/system theming
 
-### 3. Sound Input Selection
-- Dropdown to select input device
-- Input level visualization during recording
-- Save preferred device
+### 3. Permissions & Accessibility
+- [ ] Detect microphone permission status
+- [ ] Detect accessibility permission status
+- [ ] Show clear indicators in menu bar/icon
+
+### 4. Sound Input Selection
+- [ ] Dropdown to select input device
+- [ ] Input level visualization during recording
+- [ ] Save preferred device
 
 ---
 
 ## Product & Distribution Questions
-
+*(...remaining unchanged...)*
 ### Distribution
 - [ ] Direct download (DMG)?
 - [ ] Homebrew tap?

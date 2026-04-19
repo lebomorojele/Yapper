@@ -9,6 +9,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private let hotkeyManager = HotkeyManager()
 
     private var recordingState: RecordingState = .idle
+    private var isPendingSmartMode = false
     private var currentTranscript = ""
     private var isSmartMode = false
     private var currentAudioLevel: Float = 0
@@ -108,19 +109,30 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             } else if recordingState == .recordingMeeting {
                 stopMeetingRecording()
             } else if recordingState == .idle {
-                startRecording(smartMode: false)
+                self.isPendingSmartMode = false
+                self.recordingState = .ready
+                self.floatingPanel?.showAtTopCenter()
+                updateUI()
             }
 
         case .doubleTap:
             if case .recording = recordingState {
+                // Double tap during recording -> Cancel
                 stopRecording()
+                self.recordingState = .idle
+                self.floatingPanel?.hidePanel()
             } else if recordingState == .recordingMeeting {
+                // Double tap during meeting -> Stop/Complete
                 stopMeetingRecording()
+            } else {
+                self.isPendingSmartMode = true
+                self.recordingState = .ready
+                self.floatingPanel?.showAtTopCenter()
+                updateUI()
             }
-            startRecording(smartMode: true)
 
         case .holdStart:
-            if recordingState == .idle {
+            if recordingState == .idle || recordingState == .ready {
                 startMeetingRecording()
             } else if recordingState == .recordingMeeting {
                 stopMeetingRecording()
@@ -129,7 +141,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             }
 
         case .holdEnd:
-            // Release after hold means we stay in the meeting recording until tapped again
             break
         }
     }
@@ -137,24 +148,35 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private func setupDictation() {
         dictationController.onPartialTranscript = { [weak self] text in
             Task { @MainActor in
-                self?.currentTranscript = text
-                self?.updateUI()
+                guard let self else { return }
+                // Transition from ready to recording on first input
+                if self.recordingState == .ready {
+                    self.startRecording(smartMode: self.isPendingSmartMode)
+                }
+                self.currentTranscript = text
+                self.updateUI()
             }
         }
 
-        dictationController.onFinalTranscript = { [weak self] _ in
+        dictationController.onFinalTranscript = { [weak self] text in
             Task { @MainActor in
                 guard let self else { return }
-                // Go: idle → processing → complete → idle
                 self.recordingState = .processing
+                self.updateUI()
                 
                 Task {
-                    try? await Task.sleep(nanoseconds: 1_500_000_000)
+                    try? await Task.sleep(nanoseconds: 200_000_000) // 0.2s delay for visual feedback
                     await MainActor.run {
-                        self.recordingState = .complete
-                        SoundManager.shared.play(.processingComplete)
+                        // Check if we should clipboard fallback
+                        if self.isSmartMode {
+                             // Handled by onRecordingStopped
+                        } else {
+                            self.recordingState = .completeClipboard
+                            SoundManager.shared.play(.processingComplete)
+                            self.updateUI()
+                        }
                     }
-                    try? await Task.sleep(nanoseconds: 1_500_000_000)
+                    try? await Task.sleep(nanoseconds: 300_000_000) // 0.3s completion display
                     await MainActor.run {
                         self.recordingState = .idle
                         self.floatingPanel?.hidePanel()
@@ -162,6 +184,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 }
             }
         }
+
 
         dictationController.onRecordingStopped = { [weak self] in
             Task { @MainActor in
@@ -320,7 +343,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     // MARK: - UI Updates
 
     private func updateUI() {
-        if recordingState == .idle || recordingState == .processing { return }
+        if recordingState == .idle { return }
 
         floatingPanel?.updateContent(
             state: recordingState,

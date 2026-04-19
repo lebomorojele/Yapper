@@ -25,8 +25,7 @@ let package = Package(
         ),
         .testTarget(
             name: "YapperTests",
-            dependencies: ["Yapper"],
-            path: "YapperTests"
+            dependencies: ["Yapper"]
         )
     ]
 )

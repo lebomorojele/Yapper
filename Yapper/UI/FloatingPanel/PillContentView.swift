@@ -16,6 +16,8 @@ struct PillContentView: View {
                 switch state {
                 case .idle:
                     IdleView()
+                case .ready:
+                    Ready()
                 case .recording:
                     SimpleSmartRecording(transcript: partialTranscript, audioLevel: audioLevel, startTime: recordingStartTime ?? Date())
                 case .recordingMeeting:
@@ -24,6 +26,8 @@ struct PillContentView: View {
                     ProcessingView()
                 case .complete:
                     ProcessingComplete()
+                case .completeClipboard:
+                    ProcessingCompleteClipboardFallback()
                 }
             }
         }
@@ -40,6 +44,39 @@ struct IdleView: View {
             .frame(width: 317, height: 40)
             .background(.black)
             .cornerRadius(22)
+    }
+}
+
+// MARK: - Ready State
+struct Ready: View {
+    var body: some View {
+        HStack(spacing: 0) {
+            HStack(spacing: 1.22) {
+                ForEach(0..<7) { _ in
+                    Rectangle()
+                        .foregroundColor(.clear)
+                        .frame(width: 1.83, height: 1.83)
+                        .background(Color(red: 0.35, green: 0.35, blue: 0.35))
+                        .cornerRadius(2.44)
+                        .opacity(0.40)
+                }
+            }
+            .frame(width: 39)
+            Text("Ready")
+                .font(.custom("SF Pro", size: 14))
+                .lineSpacing(18)
+                .foregroundColor(Color(red: 0.64, green: 0.64, blue: 0.66))
+            HStack(alignment: .top, spacing: 10) {
+                Text("00:00")
+                    .font(.custom("SF Pro", size: 14))
+                    .lineSpacing(18)
+                    .foregroundColor(Color(red: 0.64, green: 0.64, blue: 0.66))
+            }
+        }
+        .padding(12)
+        .frame(width: 317)
+        .background(.black)
+        .cornerRadius(22)
     }
 }
 
@@ -201,30 +238,43 @@ struct ProcessingView: View {
 
 // MARK: - Processing Complete State
 struct ProcessingComplete: View {
-    @State private var checkScale: CGFloat = 0.01
-    
     var body: some View {
-        HStack {
+        HStack(spacing: 4) {
             Text("Complete")
                 .font(.custom("SF Pro", size: 14))
                 .foregroundColor(.white)
-            
-            Spacer()
-            
-            Image(systemName: "checkmark.circle.fill")
-                .font(.system(size: 20))
-                .foregroundColor(Color(red: 0.94, green: 0.94, blue: 0.96))
-                .scaleEffect(checkScale)
+            ZStack() {
+                Text("􀁢")
+                    .font(.custom("SF Pro Text", size: 20))
+                    .foregroundColor(Color(red: 0.94, green: 0.94, blue: 0.96))
+            }
+            .frame(width: 24, height: 18)
         }
-        .padding(.horizontal, 16)
-        .frame(width: 317, height: 44)
+        .padding(12)
+        .frame(width: 317, height: 38)
         .background(.black)
         .cornerRadius(22)
-        .onAppear {
-            withAnimation(.spring(response: 0.4, dampingFraction: 0.6)) {
-                checkScale = 1.0
+    }
+}
+
+// MARK: - Clipboard Fallback State
+struct ProcessingCompleteClipboardFallback: View {
+    var body: some View {
+        HStack(spacing: 4) {
+            Text("Complete → copied to clipboard")
+                .font(.custom("SF Pro", size: 14))
+                .foregroundColor(.white)
+            ZStack() {
+                Text("􀁢")
+                    .font(.custom("SF Pro Text", size: 20))
+                    .foregroundColor(Color(red: 0.94, green: 0.94, blue: 0.96))
             }
+            .frame(width: 24, height: 18)
         }
+        .padding(12)
+        .frame(width: 317, height: 38)
+        .background(.black)
+        .cornerRadius(22)
     }
 }
 

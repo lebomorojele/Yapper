@@ -4,10 +4,12 @@ import Foundation
 
 enum RecordingState: Equatable, Sendable {
     case idle
+    case ready
     case recording(isSmartMode: Bool)
     case recordingMeeting
     case processing
     case complete
+    case completeClipboard
 }
 
 // MARK: - Input Gesture
@@ -73,6 +75,14 @@ enum InsertionMethod: String, Codable, CaseIterable, Sendable {
     case clipboard
 }
 
+// MARK: - Smart Mode
+
+struct TranscriptionMode: Codable, Identifiable, Sendable {
+    var id: UUID = UUID()
+    var name: String
+    var prompt: String
+}
+
 // MARK: - Settings
 
 struct Settings: Codable, Sendable {
@@ -82,6 +92,16 @@ struct Settings: Codable, Sendable {
     var inputGain: Float = 1.0
     var openAIAPIKey: String?
     var llmModel: String = "gpt-4o-mini"
+    
+    // New Settings
+    var aiProvider: String = "OpenAI"
+    var autoRecordMeetings: Bool = false
+    var saveTranscripts: Bool = true
+    var saveLocation: String?
+    var transcriptionModes: [TranscriptionMode] = [
+        TranscriptionMode(name: "Polish", prompt: "Fix grammar, punctuation, and clarity in the following. Return ONLY the corrected text, no explanations:\n\n{input}"),
+        TranscriptionMode(name: "Email", prompt: "Rewrite the following as a professional email. Return ONLY the email text, no explanations:\n\n{input}")
+    ]
 
     static let `default` = Settings()
 }

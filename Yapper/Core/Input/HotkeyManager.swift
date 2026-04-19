@@ -78,7 +78,16 @@ final class HotkeyManager: @unchecked Sendable {
         }
 
         let flags = event.flags
-        let currentlyDown = flags.contains(.maskSecondaryFn)
+        
+        // Ensure only Fn key flag is relevant (maskSecondaryFn = 0x8000)
+        // If other modifiers are down, ignore
+        let relevantFlags = flags.rawValue & 0xFFFF0000 
+        let currentlyDown = (relevantFlags & CGEventFlags.maskSecondaryFn.rawValue) != 0
+        let otherFlags = (relevantFlags & ~CGEventFlags.maskSecondaryFn.rawValue) != 0
+
+        if otherFlags && currentlyDown {
+            return Unmanaged.passRetained(event)
+        }
         
         // Debug logging
         if currentlyDown && !fnKeyDown {
