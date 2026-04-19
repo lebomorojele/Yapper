@@ -12,6 +12,11 @@ enum RecordingState: Equatable, Sendable {
     case completeClipboard
 }
 
+enum InsertionOutcome: Equatable, Sendable {
+    case accessibility
+    case clipboard
+}
+
 // MARK: - Input Gesture
 
 enum InputGesture: Sendable {
@@ -24,44 +29,44 @@ enum InputGesture: Sendable {
 // MARK: - Smart Mode Option
 
 enum SmartModeOption: String, CaseIterable, Identifiable, Sendable {
-    case email = "Email"
+    case slack = "Slack"
     case chat = "Chat"
+    case email = "Email"
     case prompt = "Prompt"
-    case polish = "Polish"
-    case cancel = "Don’t change (Fn)"
+    case cancel = "Don't change my yap"
 
     var id: String { rawValue }
 
     var icon: String {
         switch self {
-        case .email: return "envelope"
+        case .slack: return "bubble.left.and.bubble.right"
         case .chat: return "message"
+        case .email: return "envelope"
         case .prompt: return "chevron.left.forwardslash.chevron.right"
-        case .polish: return "wand.and.stars"
         case .cancel: return "xmark"
         }
     }
 
     var shortcut: String {
         switch self {
-        case .email: return "e"
+        case .slack: return "s"
         case .chat: return "c"
+        case .email: return "e"
         case .prompt: return "r"
-        case .polish: return "p"
         case .cancel: return ""
         }
     }
 
     var promptTemplate: String {
         switch self {
-        case .email:
-            return "Rewrite the following as a professional email. Return ONLY the email text, no explanations:\n\n{input}"
+        case .slack:
+            return "Rewrite the following for a polished Slack message. Keep it concise, clear, and natural. Return ONLY the message text:\n\n{input}"
         case .chat:
-            return "Make the following concise and friendly for a chat like Slack. Return ONLY the message, no explanations:\n\n{input}"
+            return "Make the following concise and friendly for a chat conversation. Return ONLY the message text:\n\n{input}"
+        case .email:
+            return "Rewrite the following as a professional email. Return ONLY the email text:\n\n{input}"
         case .prompt:
-            return "Convert the following into a clear, detailed prompt for an AI coding assistant. Return ONLY the prompt, no explanations:\n\n{input}"
-        case .polish:
-            return "Fix grammar, punctuation, and clarity in the following. Return ONLY the corrected text, no explanations:\n\n{input}"
+            return "Convert the following into a clear, detailed prompt for an AI assistant. Return ONLY the prompt:\n\n{input}"
         case .cancel:
             return ""
         }
@@ -87,19 +92,27 @@ struct TranscriptionMode: Codable, Identifiable, Sendable {
 
 struct Settings: Codable, Sendable {
     var insertionMethod: InsertionMethod = .axuiElement
+    var launchAtLogin: Bool = false
     var silenceThreshold: TimeInterval = 1.5
     var silenceDetectionEnabled: Bool = true
     var inputGain: Float = 1.0
     var openAIAPIKey: String?
+    var anthropicAPIKey: String?
+    var ollamaEndpoint: String = "http://localhost:11434"
     var llmModel: String = "gpt-4o-mini"
+    
+    // Audio Settings
+    var selectedAudioDeviceId: String? = nil
     
     // New Settings
     var aiProvider: String = "OpenAI"
     var autoRecordMeetings: Bool = false
     var saveTranscripts: Bool = true
-    var saveLocation: String?
+    var saveLocation: String? = nil
+    var meetingSummaryMode: String = "bullets"
     var transcriptionModes: [TranscriptionMode] = [
-        TranscriptionMode(name: "Polish", prompt: "Fix grammar, punctuation, and clarity in the following. Return ONLY the corrected text, no explanations:\n\n{input}"),
+        TranscriptionMode(name: "Slack", prompt: "Rewrite the following for a polished Slack message. Keep it concise, clear, and natural. Return ONLY the message text:\n\n{input}"),
+        TranscriptionMode(name: "Chat", prompt: "Make the following concise and friendly for a chat conversation. Return ONLY the message text:\n\n{input}"),
         TranscriptionMode(name: "Email", prompt: "Rewrite the following as a professional email. Return ONLY the email text, no explanations:\n\n{input}")
     ]
 

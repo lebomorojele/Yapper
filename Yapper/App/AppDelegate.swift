@@ -5,7 +5,12 @@ import AVFoundation
 final class AppDelegate: NSObject, NSApplicationDelegate {
     private var statusItem: NSStatusItem?
     private var floatingPanel: FloatingPanel?
-    private let dictationController = DictationController()
+    private let dictationController = DictationController(
+        audioEngine: AudioEngine(),
+        transcriber: ParakeetTranscriber(),
+        llmProcessor: LLMProcessor(),
+        textInserter: TextInserter()
+    )
     private let hotkeyManager = HotkeyManager()
 
     private var recordingState: RecordingState = .idle
@@ -15,6 +20,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var currentAudioLevel: Float = 0
     private var recordingStartTime: Date? = nil
     private var modelReady = false
+    private var isMeetingMode = false
 
     // MARK: - App Lifecycle
 
@@ -108,27 +114,53 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 stopRecording()
             } else if recordingState == .recordingMeeting {
                 stopMeetingRecording()
-            } else if recordingState == .idle {
+            } else if recordingState == .idle || recordingState == .ready {
+                // UI updates FIRST for instant responsiveness
                 self.isPendingSmartMode = false
-                self.recordingState = .ready
+                self.isSmartMode = false
+                self.isMeetingMode = false
+                self.currentTranscript = ""
+                self.currentAudioLevel = 0
+                self.recordingStartTime = Date()
+                
+                // Show UI immediately - then start audio
+                self.recordingState = .recording(isSmartMode: false)
                 self.floatingPanel?.showAtTopCenter()
-                updateUI()
+                self.updateUI()
+                
+                // Play sound IMMEDIATELY
+                SoundManager.shared.play(.recordingStart)
+                
+                // Start audio capture
+                self.dictationController.startRecording(smartMode: false)
             }
 
         case .doubleTap:
             if case .recording = recordingState {
-                // Double tap during recording -> Cancel
                 stopRecording()
                 self.recordingState = .idle
                 self.floatingPanel?.hidePanel()
             } else if recordingState == .recordingMeeting {
-                // Double tap during meeting -> Stop/Complete
                 stopMeetingRecording()
             } else {
+                // UI updates FIRST for instant responsiveness
                 self.isPendingSmartMode = true
-                self.recordingState = .ready
+                self.isSmartMode = true
+                self.isMeetingMode = false
+                self.currentTranscript = ""
+                self.currentAudioLevel = 0
+                self.recordingStartTime = Date()
+                
+                // Show UI immediately - then start audio
+                self.recordingState = .recording(isSmartMode: true)
                 self.floatingPanel?.showAtTopCenter()
-                updateUI()
+                self.updateUI()
+                
+                // Play sound IMMEDIATELY
+                SoundManager.shared.play(.smartMenuOpen)
+                
+                // Start audio capture
+                self.dictationController.startRecording(smartMode: true)
             }
 
         case .holdStart:
@@ -146,37 +178,31 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     private func setupDictation() {
-        dictationController.onPartialTranscript = { [weak self] text in
+        dictationController.onPartialTranscript = { [weak self] (text: String) in
             Task { @MainActor in
                 guard let self else { return }
-                // Transition from ready to recording on first input
+                // Transition from ready to recording (actively recording) on first partial text
                 if self.recordingState == .ready {
-                    self.startRecording(smartMode: self.isPendingSmartMode)
+                    self.recordingState = .recording(isSmartMode: self.isSmartMode)
                 }
                 self.currentTranscript = text
                 self.updateUI()
             }
         }
 
-        dictationController.onFinalTranscript = { [weak self] text in
+        dictationController.onFinalTranscript = { [weak self] (text: String, insertionOutcome: InsertionOutcome) in
             Task { @MainActor in
                 guard let self else { return }
-                self.recordingState = .processing
+                
+                // Play success sound at the END of the user journey - when text is ready
+                SoundManager.shared.play(.processingComplete)
+                
+                self.currentTranscript = text
+                self.recordingState = insertionOutcome == .clipboard ? .completeClipboard : .complete
                 self.updateUI()
                 
                 Task {
-                    try? await Task.sleep(nanoseconds: 200_000_000) // 0.2s delay for visual feedback
-                    await MainActor.run {
-                        // Check if we should clipboard fallback
-                        if self.isSmartMode {
-                             // Handled by onRecordingStopped
-                        } else {
-                            self.recordingState = .completeClipboard
-                            SoundManager.shared.play(.processingComplete)
-                            self.updateUI()
-                        }
-                    }
-                    try? await Task.sleep(nanoseconds: 300_000_000) // 0.3s completion display
+                    try? await Task.sleep(nanoseconds: 1_200_000_000)
                     await MainActor.run {
                         self.recordingState = .idle
                         self.floatingPanel?.hidePanel()
@@ -192,30 +218,32 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 if self.isSmartMode {
                     self.showSmartModeOptions()
                 } else {
-                    self.recordingState = .idle
-                    // Panel will be hidden by onFinalTranscript
+                    self.recordingState = .processing
+                    self.updateUI()
                 }
             }
         }
 
-        dictationController.onAudioLevel = { [weak self] level in
+        dictationController.onAudioLevel = { [weak self] (level: Float) in
             Task { @MainActor in
                 self?.currentAudioLevel = level
                 if case .recording = self?.recordingState {
+                    self?.updateUI()
+                } else if self?.recordingState == .recordingMeeting {
                     self?.updateUI()
                 }
             }
         }
 
+        dictationController.onError = { (error: Error) in
+            print("[Yapper] Error: \(error)")
+        }
+
         dictationController.onModelLoaded = { [weak self] in
             Task { @MainActor in
                 self?.modelReady = true
-                print("[Yapper] Model ready — fn key active")
+                print("[Yapper] Model ready, recording enabled")
             }
-        }
-
-        dictationController.onError = { error in
-            print("[Yapper] Error: \(error)")
         }
 
         // Load the Parakeet model in background
@@ -225,58 +253,30 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
     }
 
-    // MARK: - Meeting Mode (Stub)
+    // MARK: - Meeting Mode
 
     private func startMeetingRecording() {
         guard modelReady else { return }
+        isMeetingMode = true
+        isSmartMode = false
         recordingState = .recordingMeeting
-        SoundManager.shared.play(.meetingStart)
         currentTranscript = ""
         currentAudioLevel = 0
         recordingStartTime = Date()
-
-        // In a real implementation, this would likely bypass `dictationController` and write directly to an audio file
-        // or a chunked transcription pipeline optimized for 1+ hour meetings.
+        SoundManager.shared.play(.meetingStart)
         print("[Yapper] 🎙️ Started Meeting Recording")
-        
+
         floatingPanel?.showAtTopCenter()
         updateUI()
+        dictationController.startRecording(smartMode: false)
     }
 
     private func stopMeetingRecording() {
         guard recordingState == .recordingMeeting else { return }
         recordingState = .processing
-        
+        updateUI()
         print("[Yapper] 🛑 Stopped Meeting Recording")
-        SoundManager.shared.play(.meetingStop)
-        
-        floatingPanel?.updateContent(
-            state: .processing,
-            partialTranscript: "",
-            showOptions: false,
-            recordingStartTime: nil,
-            onOptionSelected: { _ in }
-        )
-        
-        // Processing -> Complete -> Idle
-        Task {
-            // Process for 2 seconds
-            try? await Task.sleep(nanoseconds: 2_000_000_000)
-            
-            await MainActor.run {
-                self.recordingState = .complete
-            SoundManager.shared.play(.processingComplete)
-            }
-            
-            // Show complete state for 1.5 seconds
-            try? await Task.sleep(nanoseconds: 1_500_000_000)
-            
-            await MainActor.run {
-                print("[Yapper] 📝 Meeting Summary Generated")
-                self.recordingState = .idle
-                self.floatingPanel?.hidePanel()
-            }
-        }
+        dictationController.stopRecording()
     }
 
     // MARK: - Recording Control
@@ -286,6 +286,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             print("[Yapper] Model not ready — ignoring start request")
             return
         }
+        isMeetingMode = false
         recordingState = .recording(isSmartMode: smartMode)
         SoundManager.shared.play(smartMode ? .smartMenuOpen : .recordingStart)
         isSmartMode = smartMode
@@ -299,9 +300,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     private func stopRecording() {
-        SoundManager.shared.play(.recordingStop)
+        // Don't play stop sound here - we play success at the END when text is ready
         dictationController.stopRecording()
-        // Remaining state updates happen in onRecordingStopped callback
     }
 
     // MARK: - Smart Mode
@@ -321,12 +321,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     private func handleSmartModeSelection(_ option: SmartModeOption) {
-        if option == .cancel {
-            recordingState = .idle
-            floatingPanel?.hidePanel()
-            return
-        }
-
         recordingState = .processing
         floatingPanel?.updateContent(
             state: .processing,
@@ -337,13 +331,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         )
 
         dictationController.handleSmartModeSelection(option)
-        // onFinalTranscript callback will hide the panel
+        // onFinalTranscript callback will show completion and then hide the panel
     }
 
     // MARK: - UI Updates
 
     private func updateUI() {
-        if recordingState == .idle { return }
+        if recordingState == .idle {
+            floatingPanel?.hidePanel()
+            return
+        }
 
         floatingPanel?.updateContent(
             state: recordingState,

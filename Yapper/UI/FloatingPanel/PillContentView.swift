@@ -1,5 +1,16 @@
 import SwiftUI
 
+private enum PillMetrics {
+    static let compactWidth: CGFloat = 317
+    static let compactHeight: CGFloat = 48
+    static let optionsWidth: CGFloat = 317
+    static let optionsHeight: CGFloat = 124
+    static let cardBackground = Color.black
+    static let muted = Color(red: 0.64, green: 0.64, blue: 0.66)
+    static let accent = Color(red: 0.98, green: 0.21, blue: 0.20)
+    static let inactive = Color(red: 0.35, green: 0.35, blue: 0.35)
+}
+
 struct PillContentView: View {
     var state: RecordingState = .idle
     var partialTranscript: String = ""
@@ -11,343 +22,247 @@ struct PillContentView: View {
     var body: some View {
         Group {
             if showOptions {
-                SmartRecordOptions(onOptionSelected: onOptionSelected)
+                SmartModeSelectionView(onOptionSelected: onOptionSelected)
             } else {
                 switch state {
                 case .idle:
-                    IdleView()
+                    EmptyView()
                 case .ready:
-                    Ready()
+                    PillShell {
+                        WaveformView(audioLevel: 0, activeBars: 0)
+                        PillLabel("Ready")
+                        PillTimer(
+                            textColor: PillMetrics.muted,
+                            startTime: nil,
+                            fallback: "00:00"
+                        )
+                    }
                 case .recording:
-                    SimpleSmartRecording(transcript: partialTranscript, audioLevel: audioLevel, startTime: recordingStartTime ?? Date())
+                    PillShell {
+                        WaveformView(audioLevel: audioLevel, activeBars: 6)
+                        PillLabel(partialTranscript.isEmpty ? "Listening..." : partialTranscript)
+                        PillTimer(
+                            textColor: PillMetrics.accent,
+                            startTime: recordingStartTime,
+                            fallback: "00:00"
+                        )
+                    }
                 case .recordingMeeting:
-                    MeetingRecordingView(audioLevel: audioLevel, startTime: recordingStartTime ?? Date())
+                    PillShell {
+                        WaveformView(audioLevel: audioLevel, activeBars: 6)
+                        PillLabel("recording meeting")
+                        PillTimer(
+                            textColor: PillMetrics.accent,
+                            startTime: recordingStartTime,
+                            fallback: "00:00"
+                        )
+                    }
                 case .processing:
-                    ProcessingView()
+                    ProcessingPill()
                 case .complete:
-                    ProcessingComplete()
+                    StatusPill(title: "Complete")
                 case .completeClipboard:
-                    ProcessingCompleteClipboardFallback()
+                    StatusPill(title: "Copied to clipboard")
                 }
             }
         }
-        .animation(.spring(response: 0.5, dampingFraction: 0.75), value: showOptions)
-        .animation(.easeInOut(duration: 0.4), value: state)
+        .animation(.spring(response: 0.35, dampingFraction: 0.85), value: showOptions)
+        .animation(.easeInOut(duration: 0.2), value: state)
     }
 }
 
-// MARK: - Idle State
-struct IdleView: View {
+private struct PillShell<Content: View>: View {
+    @ViewBuilder var content: Content
+
     var body: some View {
-        Rectangle()
-            .foregroundColor(.clear)
-            .frame(width: 317, height: 40)
-            .background(.black)
-            .cornerRadius(22)
+        HStack(spacing: 12) {
+            content
+        }
+        .padding(.horizontal, 14)
+        .padding(.vertical, 12)
+        .frame(width: PillMetrics.compactWidth, height: PillMetrics.compactHeight)
+        .background(PillMetrics.cardBackground)
+        .clipShape(Capsule(style: .continuous))
     }
 }
 
-// MARK: - Ready State
-struct Ready: View {
+private struct PillLabel: View {
+    let text: String
+
+    init(_ text: String) {
+        self.text = text
+    }
+
     var body: some View {
-        HStack(spacing: 0) {
+        Text(text)
+            .font(.system(size: 14, weight: .regular))
+            .lineLimit(1)
+            .truncationMode(.tail)
+            .foregroundStyle(PillMetrics.muted)
+            .frame(maxWidth: .infinity, alignment: .leading)
+    }
+}
+
+private struct PillTimer: View {
+    let textColor: Color
+    let startTime: Date?
+    let fallback: String
+
+    var body: some View {
+        Group {
+            if let startTime {
+                TimelineView(.periodic(from: startTime, by: 1.0)) { timeline in
+                    Text(Self.timeString(from: max(0, timeline.date.timeIntervalSince(startTime))))
+                        .font(.system(size: 14, weight: .semibold))
+                        .monospacedDigit()
+                        .foregroundStyle(textColor)
+                }
+            } else {
+                Text(fallback)
+                    .font(.system(size: 14, weight: .semibold))
+                    .monospacedDigit()
+                    .foregroundStyle(textColor)
+            }
+        }
+        .frame(width: 42, alignment: .trailing)
+    }
+
+    private static func timeString(from interval: TimeInterval) -> String {
+        let minutes = Int(interval) / 60
+        let seconds = Int(interval) % 60
+        return String(format: "%02d:%02d", minutes, seconds)
+    }
+}
+
+private struct WaveformView: View {
+    let audioLevel: Float
+    let activeBars: Int
+    private let minHeights: [CGFloat] = [10, 13, 16, 9, 12, 7, 2, 2, 2]
+    private let maxHeights: [CGFloat] = [10, 14, 17, 10, 12, 8, 2, 2, 2]
+
+    var body: some View {
+        TimelineView(.animation(minimumInterval: 0.08, paused: false)) { timeline in
             HStack(spacing: 1.22) {
-                ForEach(0..<7) { _ in
-                    Rectangle()
-                        .foregroundColor(.clear)
-                        .frame(width: 1.83, height: 1.83)
-                        .background(Color(red: 0.35, green: 0.35, blue: 0.35))
-                        .cornerRadius(2.44)
-                        .opacity(0.40)
+                ForEach(Array(minHeights.enumerated()), id: \.offset) { index, minHeight in
+                    RoundedRectangle(cornerRadius: 2.44, style: .continuous)
+                        .fill(index < activeBars ? PillMetrics.accent : PillMetrics.inactive)
+                        .frame(width: 1.83, height: barHeight(at: index, minHeight: minHeight, time: timeline.date.timeIntervalSinceReferenceDate))
+                        .opacity(index < activeBars ? (index == activeBars - 1 ? 0.4 : 1.0) : 0.4)
                 }
             }
-            .frame(width: 39)
-            Text("Ready")
-                .font(.custom("SF Pro", size: 14))
-                .lineSpacing(18)
-                .foregroundColor(Color(red: 0.64, green: 0.64, blue: 0.66))
-            HStack(alignment: .top, spacing: 10) {
-                Text("00:00")
-                    .font(.custom("SF Pro", size: 14))
-                    .lineSpacing(18)
-                    .foregroundColor(Color(red: 0.64, green: 0.64, blue: 0.66))
-            }
+            .frame(width: 39, alignment: .leading)
         }
-        .padding(12)
-        .frame(width: 317)
-        .background(.black)
-        .cornerRadius(22)
+    }
+
+    private func barHeight(at index: Int, minHeight: CGFloat, time: TimeInterval) -> CGFloat {
+        guard index < activeBars else { return minHeight }
+        let pulse = CGFloat(abs(sin((time * 5) + Double(index) * 0.55))) * 0.18
+        let normalized = max(CGFloat(audioLevel), pulse)
+        let maxHeight = maxHeights[index]
+        let phaseOffset = CGFloat((index % 3)) * 0.08
+        let animated = min(1, normalized + phaseOffset)
+        return minHeight + ((maxHeight - minHeight) * animated)
     }
 }
 
-// MARK: - Recording State
-struct SimpleSmartRecording: View {
-    let transcript: String
-    let audioLevel: Float
-    let startTime: Date
+private struct ProcessingPill: View {
+    @State private var progressOffset: CGFloat = -10
 
     var body: some View {
-        HStack(spacing: 12) {
-            FigmaWaveform(audioLevel: audioLevel)
-            
-            Text(transcript.isEmpty ? "Listening..." : transcript)
-                .font(.custom("SF Pro", size: 14))
-                .lineLimit(1)
-                .truncationMode(.tail)
-                .foregroundColor(Color(red: 0.64, green: 0.64, blue: 0.66))
-                .frame(maxWidth: .infinity, alignment: .leading)
-            
-            TimelineView(.periodic(from: startTime, by: 1.0)) { timeline in
-                let elapsed = max(0, timeline.date.timeIntervalSince(startTime))
-                Text(timeString(from: elapsed))
-                    .font(.custom("SF Pro", size: 14).weight(.medium))
-                    .monospacedDigit()
-                    .foregroundColor(Color(red: 0.98, green: 0.21, blue: 0.20))
-            }
-        }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 12)
-        .frame(width: 317, height: 44)
-        .background(.black)
-        .cornerRadius(22)
-    }
-    
-    private func timeString(from interval: TimeInterval) -> String {
-        let minutes = Int(interval) / 60
-        let seconds = Int(interval) % 60
-        return String(format: "%02d:%02d", minutes, seconds)
-    }
-}
-
-// MARK: - Meeting Recording State
-struct MeetingRecordingView: View {
-    let audioLevel: Float
-    let startTime: Date
-
-    var body: some View {
-        HStack(spacing: 12) {
-            FigmaWaveform(audioLevel: audioLevel)
-            
-            Text("Recording meeting...")
-                .font(.custom("SF Pro", size: 14))
-                .foregroundColor(Color(red: 0.64, green: 0.64, blue: 0.66))
-                .frame(maxWidth: .infinity, alignment: .leading)
-            
-            TimelineView(.periodic(from: startTime, by: 1.0)) { timeline in
-                let elapsed = max(0, timeline.date.timeIntervalSince(startTime))
-                Text(timeString(from: elapsed))
-                    .font(.custom("SF Pro", size: 14).weight(.medium))
-                    .monospacedDigit()
-                    .foregroundColor(Color(red: 0.98, green: 0.21, blue: 0.20))
-            }
-        }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 12)
-        .frame(width: 317, height: 44)
-        .background(.black)
-        .cornerRadius(22)
-    }
-    
-    private func timeString(from interval: TimeInterval) -> String {
-        let minutes = Int(interval) / 60
-        let seconds = Int(interval) % 60
-        return String(format: "%02d:%02d", minutes, seconds)
-    }
-}
-
-// MARK: - Figma Waveform
-struct FigmaWaveform: View {
-    let audioLevel: Float
-    
-    var body: some View {
-        HStack(spacing: 1.5) {
-            WaveBar(level: audioLevel, index: 0, minH: 3, maxH: 10)
-            WaveBar(level: audioLevel, index: 1, minH: 4, maxH: 14)
-            WaveBar(level: audioLevel, index: 2, minH: 5, maxH: 17)
-            WaveBar(level: audioLevel, index: 3, minH: 3, maxH: 10)
-            WaveBar(level: audioLevel, index: 4, minH: 4, maxH: 12)
-            WaveBar(level: audioLevel, index: 5, minH: 2, maxH: 8).opacity(0.6)
-            WaveBar(level: 0, index: 6, minH: 2, maxH: 2).opacity(0.4).foregroundColor(Color(red: 0.35, green: 0.35, blue: 0.35))
-            WaveBar(level: 0, index: 7, minH: 2, maxH: 2).opacity(0.4).foregroundColor(Color(red: 0.35, green: 0.35, blue: 0.35))
-            WaveBar(level: 0, index: 8, minH: 2, maxH: 2).opacity(0.4).foregroundColor(Color(red: 0.35, green: 0.35, blue: 0.35))
-        }
-        .frame(width: 39)
-    }
-}
-
-struct WaveBar: View {
-    let level: Float
-    let index: Int
-    let minH: CGFloat
-    let maxH: CGFloat
-    
-    var body: some View {
-        Rectangle()
-            .foregroundColor(Color(red: 0.98, green: 0.21, blue: 0.20))
-            .frame(width: 2, height: barHeight)
-            .cornerRadius(2.44)
-            .animation(.easeInOut(duration: 0.1), value: barHeight)
-    }
-    
-    private var barHeight: CGFloat {
-        if maxH == minH { return minH } // Static dots
-        let boost = CGFloat(max(0, level))
-        let amplitude = minH + (maxH - minH) * boost * 1.5
-        return max(minH, min(maxH, amplitude))
-    }
-}
-
-// MARK: - Processing State
-struct ProcessingView: View {
-    @State private var offset: CGFloat = -14
-    
-    var body: some View {
-        HStack {
+        PillShell {
             Text("Processing")
-                .font(.custom("SF Pro", size: 14))
-                .foregroundColor(.white)
-            
-            Spacer()
-            
+                .font(.system(size: 14, weight: .regular))
+                .foregroundStyle(.white)
+
+            Spacer(minLength: 0)
+
             ZStack(alignment: .leading) {
-                Rectangle()
-                    .foregroundColor(Color(red: 0.36, green: 0.36, blue: 0.36))
+                Capsule()
+                    .fill(Color.white.opacity(0.22))
                     .frame(width: 36, height: 5)
-                    .cornerRadius(16)
-                
-                Rectangle()
-                    .foregroundColor(Color(red: 0.85, green: 0.85, blue: 0.85))
+
+                Capsule()
+                    .fill(Color.white.opacity(0.86))
                     .frame(width: 20, height: 5)
-                    .cornerRadius(16)
-                    .offset(x: offset)
+                    .offset(x: progressOffset)
             }
             .frame(width: 36, height: 5)
-            .clipShape(RoundedRectangle(cornerRadius: 16))
-        }
-        .padding(.horizontal, 16)
-        .frame(width: 317, height: 44)
-        .background(.black)
-        .cornerRadius(22)
-        .onAppear {
-            withAnimation(.easeInOut(duration: 0.8).repeatForever(autoreverses: true)) {
-                offset = 16
+            .clipShape(Capsule())
+            .onAppear {
+                progressOffset = -10
+                withAnimation(.easeInOut(duration: 0.75).repeatForever(autoreverses: true)) {
+                    progressOffset = 16
+                }
             }
         }
     }
 }
 
-// MARK: - Processing Complete State
-struct ProcessingComplete: View {
-    var body: some View {
-        HStack(spacing: 4) {
-            Text("Complete")
-                .font(.custom("SF Pro", size: 14))
-                .foregroundColor(.white)
-            ZStack() {
-                Text("􀁢")
-                    .font(.custom("SF Pro Text", size: 20))
-                    .foregroundColor(Color(red: 0.94, green: 0.94, blue: 0.96))
-            }
-            .frame(width: 24, height: 18)
-        }
-        .padding(12)
-        .frame(width: 317, height: 38)
-        .background(.black)
-        .cornerRadius(22)
-    }
-}
-
-// MARK: - Clipboard Fallback State
-struct ProcessingCompleteClipboardFallback: View {
-    var body: some View {
-        HStack(spacing: 4) {
-            Text("Complete → copied to clipboard")
-                .font(.custom("SF Pro", size: 14))
-                .foregroundColor(.white)
-            ZStack() {
-                Text("􀁢")
-                    .font(.custom("SF Pro Text", size: 20))
-                    .foregroundColor(Color(red: 0.94, green: 0.94, blue: 0.96))
-            }
-            .frame(width: 24, height: 18)
-        }
-        .padding(12)
-        .frame(width: 317, height: 38)
-        .background(.black)
-        .cornerRadius(22)
-    }
-}
-
-// MARK: - Smart Options State
-struct SmartRecordOptions: View {
-    var onOptionSelected: (SmartModeOption) -> Void
-    
-    var body: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            HStack(spacing: 16) {
-                Text("􀖀")
-                    .font(.custom("SF Pro Text", size: 28).weight(.bold))
-                    .foregroundColor(Color(red: 0.22, green: 0.75, blue: 0.35))
-                
-                VStack(alignment: .leading, spacing: 2) {
-                    Text("Finished Yapping?")
-                        .font(.custom("SF Pro", size: 16).weight(.semibold))
-                        .foregroundColor(.white)
-                    Text("Would you like to change the tone of your yap?")
-                        .font(.custom("SF Pro", size: 14))
-                        .foregroundColor(Color(red: 0.51, green: 0.51, blue: 0.51))
-                }
-            }
-            .padding(.horizontal, 8)
-            
-            VStack(spacing: 12) {
-                HStack(spacing: 12) {
-                    SmartButton(title: "Polish", option: .polish, action: { onOptionSelected(.polish) })
-                    SmartButton(title: "Chat", option: .chat, action: { onOptionSelected(.chat) })
-                }
-                HStack(spacing: 12) {
-                    SmartButton(title: "Email", option: .email, action: { onOptionSelected(.email) })
-                    SmartButton(title: "Prompt", option: .prompt, action: { onOptionSelected(.prompt) })
-                }
-                
-                Button {
-                    onOptionSelected(.cancel)
-                } label: {
-                    Text("Don’t change (Fn)")
-                        .font(.custom("SF Pro", size: 16).weight(.medium))
-                        .foregroundColor(Color(red: 0.98, green: 0.21, blue: 0.20))
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 14)
-                        .background(Color(red: 0.11, green: 0.06, blue: 0.07))
-                        .cornerRadius(300)
-                }
-                .buttonStyle(.plain)
-            }
-        }
-        .padding(.horizontal, 24)
-        .padding(.vertical, 24)
-        .frame(width: 367)
-        .background(.black)
-        .cornerRadius(42)
-        .shadow(color: Color.black.opacity(0.25), radius: 16, y: 8)
-    }
-}
-
-struct SmartButton: View {
+private struct StatusPill: View {
     let title: String
-    let option: SmartModeOption
-    let action: () -> Void
-    
+
     var body: some View {
-        Button(action: action) {
+        PillShell {
             Text(title)
-                .font(.custom("SF Pro", size: 16).weight(.semibold))
-                .foregroundColor(.white)
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 14)
-                .background(Color(red: 0.17, green: 0.17, blue: 0.18))
-                .cornerRadius(300)
+                .font(.system(size: 14, weight: .regular))
+                .foregroundStyle(.white)
+
+            Spacer(minLength: 0)
+
+            Image(systemName: "checkmark")
+                .font(.system(size: 15, weight: .semibold))
+                .foregroundStyle(Color.white.opacity(0.94))
+                .frame(width: 24, height: 18)
         }
-        .buttonStyle(.plain)
+    }
+}
+
+private struct SmartModeSelectionView: View {
+    let onOptionSelected: (SmartModeOption) -> Void
+    private let options: [SmartModeOption] = [.slack, .chat, .email, .prompt]
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(spacing: 8) {
+                ForEach(options) { option in
+                    Button(option.rawValue) {
+                        onOptionSelected(option)
+                    }
+                    .buttonStyle(SmartModeTabButtonStyle())
+                }
+            }
+            .frame(height: 38)
+
+            Button {
+                onOptionSelected(.cancel)
+            } label: {
+                Text("Don't change my yap")
+                    .font(.system(size: 14, weight: .medium))
+                    .foregroundStyle(PillMetrics.accent)
+                    .frame(maxWidth: .infinity, alignment: .center)
+                    .padding(.vertical, 2)
+            }
+            .buttonStyle(.plain)
+        }
+        .padding(.top, 11)
+        .padding(.horizontal, 24)
+        .padding(.bottom, 18)
+        .frame(width: PillMetrics.optionsWidth, height: PillMetrics.optionsHeight, alignment: .topLeading)
+        .background(PillMetrics.cardBackground)
+        .clipShape(RoundedRectangle(cornerRadius: 34, style: .continuous))
+    }
+}
+
+private struct SmartModeTabButtonStyle: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .font(.system(size: 14, weight: .medium))
+            .foregroundStyle(.white)
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 8)
+            .background(
+                Capsule(style: .continuous)
+                    .fill(Color.white.opacity(configuration.isPressed ? 0.18 : 0.10))
+            )
     }
 }

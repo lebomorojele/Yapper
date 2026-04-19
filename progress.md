@@ -1,100 +1,43 @@
 # Yapper Progress & Planning
 
-## v0.2 Current State (Done)
-- [x] Fn hotkey (single/double tap, long hold)
-- [x] Meeting Mode recording
-- [x] Custom sound effects
-- [x] UI states (Processing, Complete, Smart Options)
-- [x] Native menu bar icon
-- [x] Draggable panel
+## v0.3.x Hotfix (In Progress)
+- [x] Fix single/double tap not starting audio capture
+- [x] Fix modelReady never set to true 
+- [x] Fix Ready state UI layout (centered text)
+- [x] Fix Preferences panel (Meeting tab, navigation, sidebar width)
+- [x] Audio device selection wired to settings (System Default option)
+- [x] Replace legacy smart options UI with new pill-only surfaces
+- [x] Restore visible completion / clipboard completion pills
+- [x] Rebuild preferences window with native Tahoe-style sections
+- [x] Fix pill proportions and waveform animation to match design reference
+- [ ] Remove sidebar toggle / "hide menu" header control from preferences
+- [ ] Route long-press meeting mode through real transcription output path
 
 ---
 
-## v0.3 Priorities
-
-### 1. Polish & Tightening (State Transitions)
-- [ ] Fix: UI disappears immediately after paste
-- [ ] Fix: Double-tap logic for initiation/cancellation
-- [ ] Fix: Prevent Fn + Backspace triggering hotkey
-- [ ] Fix: Ensure success pill visibility
-- [ ] Implement: 'Ready' pill (Fn tap start, no action if no speech)
-- [ ] Implement: 'Processing Complete' & 'Clipboard Fallback' pills
-- [ ] Tighten state transitions (Ready -> Record -> Complete)
-
-### 2. Preferences Window (Native Apple Style)
-- [ ] Grouped sections with headers
-- [ ] Native toggles/sliders
-- [ ] Footer with version info
-- [ ] Apply accessibility/system theming
-
-### 3. Permissions & Accessibility
-- [ ] Detect microphone permission status
-- [ ] Detect accessibility permission status
-- [ ] Show clear indicators in menu bar/icon
-
-### 4. Sound Input Selection
-- [ ] Dropdown to select input device
-- [ ] Input level visualization during recording
-- [ ] Save preferred device
+## v0.3 Priorities (Done)
+- [x] Native Preferences Window
+- [x] Permissions & Accessibility status
+- [x] Sound Input Selection & Level Meter
+- [x] Polish: State Transitions (Ready/Processing/Complete)
+- [x] E2E Integration Testing Suite (Mock-based)
 
 ---
 
-## Product & Distribution Questions
-*(...remaining unchanged...)*
-### Distribution
-- [ ] Direct download (DMG)?
-- [ ] Homebrew tap?
-- [ ] SetApp submission?
-- [ ] Mac App Store?
+## v0.4 Planning (Future)
 
-### Paywall Strategy
-- [ ] Free tier: Basic dictation (unlimited)
-- [ ] Paid tier: Meeting transcription + AI summaries
-- [ ] "Bring Your Own Key" - User provides OpenAI/Anthropic API key
-- [ ] Optional local: Llama.cpp, Ollama, MLX (privacy-first)
-
-### AI Integration
-- [ ] Bring Your Own Key (BYOK) - Enter API key in Settings
-- [ ] OpenAI API for summaries (GPT-4o)
-- [ ] Anthropic API (Claude)
-- [ ] Local model (Llama.cpp/Ollama/MLX) - Optional
-- [ ] Meeting notes generation
+### 1. Features
+- [ ] Meeting transcription persistence
+- [ ] One-tap summaries (LLM integration)
 - [ ] Action item extraction
 
-### Pareto Features (Ranked by 10x Impact)
-
-#### Tier 1: Must Have (10x)
-1. ** Meeting Transcription** - Background record + searchable transcript
-2. ** One-tap Summaries** - Meeting → bullet points in 1 click
-
-#### Tier 2: Should Have (5x)
-3. ** Smart Templates** - dictation → Email/Slack with one tap
-4. ** Action Items** - Auto-extract tasks from meetings
-
-#### Tier 3: Nice to Have (2x)
-5. ** Multi-language** - Real-time translation
-6. ** Private Local AI** - Ollama/MLX integration
-
-### User Experience
-- Onboarding flow for permissions
-- Tutorial on first launch
-- Menu bar status indicator
-- Keyboard shortcut hints
-
----
-
-## Technical Debt
-
-### Tests
-- [ ] GestureInterpreterTests passing
+### 2. Infrastructure
+- [ ] Expand E2E test suite to cover GestureInterpreter
 - [ ] Add HotkeyManager integration tests
-
-### Build
-- [ ] Fix test target in Package.swift
 
 ---
 
 ## Next Actions
-1. Build native Preferences window
-2. Add permission checks
-3. Create progress.md
+1. Retest single-tap, double-tap, and long-press flows after the latest layout fixes
+2. Start second pass on Hex-inspired production hardening
+3. Capture any remaining visual polish issues from the new screenshots

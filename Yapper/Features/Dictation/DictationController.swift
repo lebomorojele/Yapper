@@ -1,25 +1,34 @@
 import Foundation
 
 final class DictationController: @unchecked Sendable {
+    private var audioEngine: AudioEngineProtocol
+    private var transcriber: TranscriberProtocol
+    private var llmProcessor: LLMProcessorProtocol
+    private var textInserter: TextInserterProtocol
+
     // Callbacks — set by AppDelegate before use
     var onPartialTranscript: (@Sendable (String) -> Void)?
-    var onFinalTranscript: (@Sendable (String) -> Void)?
+    var onFinalTranscript: (@Sendable (String, InsertionOutcome) -> Void)?
     var onRecordingStopped: (@Sendable () -> Void)?
     var onError: (@Sendable (Error) -> Void)?
     var onAudioLevel: (@Sendable (Float) -> Void)?
     var onModelLoaded: (@Sendable () -> Void)?
-
-    private let audioEngine = AudioEngine()
-    private let transcriber = ParakeetTranscriber()
-    private let llmProcessor = LLMProcessor()
-    private let textInserter = TextInserter()
 
     private(set) var isModelLoaded = false
     private var isRecording = false
     private var isSmartMode = false
     private var currentTranscript = ""
 
-    init() {
+    init(
+        audioEngine: AudioEngineProtocol,
+        transcriber: TranscriberProtocol,
+        llmProcessor: LLMProcessorProtocol,
+        textInserter: TextInserterProtocol
+    ) {
+        self.audioEngine = audioEngine
+        self.transcriber = transcriber
+        self.llmProcessor = llmProcessor
+        self.textInserter = textInserter
         wireCallbacks()
     }
 
@@ -95,8 +104,8 @@ final class DictationController: @unchecked Sendable {
         if !isSmartMode {
             // Quick dictation — insert text immediately
             let settings = SettingsManager.shared.settings
-            textInserter.insert(text: finalText, method: settings.insertionMethod)
-            onFinalTranscript?(finalText)
+            let insertionOutcome = textInserter.insert(text: finalText, method: settings.insertionMethod)
+            onFinalTranscript?(finalText, insertionOutcome)
         }
         // In smart mode, wait for handleSmartModeSelection
     }
@@ -107,7 +116,9 @@ final class DictationController: @unchecked Sendable {
         let text = currentTranscript
 
         if option == .cancel {
-            onFinalTranscript?(text)
+            let settings = SettingsManager.shared.settings
+            let insertionOutcome = textInserter.insert(text: text, method: settings.insertionMethod)
+            onFinalTranscript?(text, insertionOutcome)
             return
         }
 
@@ -116,13 +127,13 @@ final class DictationController: @unchecked Sendable {
             do {
                 let processed = try await self.llmProcessor.process(text: text, option: option)
                 let settings = SettingsManager.shared.settings
-                self.textInserter.insert(text: processed, method: settings.insertionMethod)
-                self.onFinalTranscript?(processed)
+                let insertionOutcome = self.textInserter.insert(text: processed, method: settings.insertionMethod)
+                self.onFinalTranscript?(processed, insertionOutcome)
             } catch {
                 print("[DictationController] LLM error: \(error) — falling back to raw text")
                 let settings = SettingsManager.shared.settings
-                self.textInserter.insert(text: text, method: settings.insertionMethod)
-                self.onFinalTranscript?(text)
+                let insertionOutcome = self.textInserter.insert(text: text, method: settings.insertionMethod)
+                self.onFinalTranscript?(text, insertionOutcome)
             }
         }
     }

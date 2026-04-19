@@ -6,7 +6,7 @@ final class FloatingPanel: NSPanel {
 
     init() {
         super.init(
-            contentRect: NSRect(x: 0, y: 0, width: 317, height: 44),
+            contentRect: NSRect(x: 0, y: 0, width: 317, height: 40),
             styleMask: [.nonactivatingPanel, .fullSizeContentView],
             backing: .buffered,
             defer: false
@@ -33,7 +33,8 @@ final class FloatingPanel: NSPanel {
     private func setupContent() {
         let view = PillContentView()
         hostingView = NSHostingView(rootView: view)
-        hostingView?.frame = NSRect(x: 0, y: 0, width: 317, height: 44)
+        hostingView?.frame = NSRect(x: 0, y: 0, width: 317, height: 48)
+        hostingView?.autoresizingMask = [.width, .height]
         self.contentView = hostingView
     }
 
@@ -57,8 +58,9 @@ final class FloatingPanel: NSPanel {
         )
         hostingView?.rootView = view
 
-        let targetWidth: CGFloat = showOptions ? 367 : 317
-        let targetHeight: CGFloat = showOptions ? 280 : 44
+        let targetWidth: CGFloat = 317
+        let targetHeight: CGFloat = showOptions ? 124 : 48
+        hostingView?.frame = NSRect(x: 0, y: 0, width: targetWidth, height: targetHeight)
 
         if abs(frame.height - targetHeight) > 1 || abs(frame.width - targetWidth) > 1 {
             var newFrame = frame
@@ -82,7 +84,7 @@ final class FloatingPanel: NSPanel {
         guard let screen = NSScreen.main else { return }
         let visibleFrame = screen.visibleFrame
         let panelWidth: CGFloat = 317
-        let panelHeight: CGFloat = 44
+        let panelHeight: CGFloat = 48
 
         let x = visibleFrame.midX - panelWidth / 2
         let y = visibleFrame.maxY - panelHeight - 50
