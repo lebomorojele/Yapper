@@ -17,6 +17,7 @@ final class DictationController: @unchecked Sendable {
     private(set) var isModelLoaded = false
     private var isRecording = false
     private var isSmartMode = false
+    private var autoStopOnSilence = true
     private var currentTranscript = ""
 
     init(
@@ -40,7 +41,7 @@ final class DictationController: @unchecked Sendable {
         }
 
         audioEngine.onSilence = { [weak self] in
-            guard let self, self.isRecording else { return }
+            guard let self, self.isRecording, self.autoStopOnSilence else { return }
             self.stopRecording()
         }
 
@@ -76,15 +77,16 @@ final class DictationController: @unchecked Sendable {
 
     // MARK: - Recording
 
-    func startRecording(smartMode: Bool = false) {
+    func startRecording(smartMode: Bool = false, autoStopOnSilence: Bool = true) {
         guard !isRecording else { return }
         isRecording = true
         isSmartMode = smartMode
+        self.autoStopOnSilence = autoStopOnSilence
         currentTranscript = ""
 
         let settings = SettingsManager.shared.settings
         audioEngine.silenceThreshold = settings.silenceThreshold
-        audioEngine.silenceDetectionEnabled = settings.silenceDetectionEnabled
+        audioEngine.silenceDetectionEnabled = autoStopOnSilence && settings.silenceDetectionEnabled
         audioEngine.inputGain = settings.inputGain
 
         transcriber.start()
@@ -94,6 +96,7 @@ final class DictationController: @unchecked Sendable {
     func stopRecording() {
         guard isRecording else { return }
         isRecording = false
+        autoStopOnSilence = true
 
         audioEngine.stop()
         let finalText = transcriber.stop()

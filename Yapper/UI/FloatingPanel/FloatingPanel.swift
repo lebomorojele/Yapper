@@ -3,10 +3,12 @@ import AppKit
 
 final class FloatingPanel: NSPanel {
     private var hostingView: NSHostingView<PillContentView>?
+    private let compactFrame = NSSize(width: 317, height: 38)
+    private let optionsFrame = NSSize(width: 372, height: 98)
 
     init() {
         super.init(
-            contentRect: NSRect(x: 0, y: 0, width: 317, height: 40),
+            contentRect: NSRect(x: 0, y: 0, width: 317, height: 38),
             styleMask: [.nonactivatingPanel, .fullSizeContentView],
             backing: .buffered,
             defer: false
@@ -33,7 +35,9 @@ final class FloatingPanel: NSPanel {
     private func setupContent() {
         let view = PillContentView()
         hostingView = NSHostingView(rootView: view)
-        hostingView?.frame = NSRect(x: 0, y: 0, width: 317, height: 48)
+        hostingView?.wantsLayer = true
+        hostingView?.layer?.backgroundColor = NSColor.clear.cgColor
+        hostingView?.frame = NSRect(origin: .zero, size: compactFrame)
         hostingView?.autoresizingMask = [.width, .height]
         self.contentView = hostingView
     }
@@ -57,34 +61,31 @@ final class FloatingPanel: NSPanel {
             onOptionSelected: onOptionSelected
         )
         hostingView?.rootView = view
+        hostingView?.wantsLayer = true
+        hostingView?.layer?.backgroundColor = NSColor.clear.cgColor
 
-        let targetWidth: CGFloat = 317
-        let targetHeight: CGFloat = showOptions ? 124 : 48
-        hostingView?.frame = NSRect(x: 0, y: 0, width: targetWidth, height: targetHeight)
+        let targetSize = showOptions ? optionsFrame : compactFrame
+        hostingView?.frame = NSRect(origin: .zero, size: targetSize)
 
-        if abs(frame.height - targetHeight) > 1 || abs(frame.width - targetWidth) > 1 {
+        if abs(frame.height - targetSize.height) > 1 || abs(frame.width - targetSize.width) > 1 {
             var newFrame = frame
-            let heightDiff = targetHeight - newFrame.height
-            let widthDiff = targetWidth - newFrame.width
+            let heightDiff = targetSize.height - newFrame.height
+            let widthDiff = targetSize.width - newFrame.width
             
-            newFrame.size.height = targetHeight
-            newFrame.size.width = targetWidth
+            newFrame.size.height = targetSize.height
+            newFrame.size.width = targetSize.width
             newFrame.origin.y -= heightDiff
-            newFrame.origin.x -= widthDiff / 2 // Center horizontally when expanding
+            newFrame.origin.x -= widthDiff / 2
 
-            NSAnimationContext.runAnimationGroup { ctx in
-                ctx.duration = 0.5
-                ctx.timingFunction = CAMediaTimingFunction(name: .easeInEaseOut)
-                self.animator().setFrame(newFrame, display: true)
-            }
+            setFrame(newFrame, display: true)
         }
     }
 
     func showAtTopCenter() {
         guard let screen = NSScreen.main else { return }
         let visibleFrame = screen.visibleFrame
-        let panelWidth: CGFloat = 317
-        let panelHeight: CGFloat = 48
+        let panelWidth = compactFrame.width
+        let panelHeight = compactFrame.height
 
         let x = visibleFrame.midX - panelWidth / 2
         let y = visibleFrame.maxY - panelHeight - 50

@@ -21,6 +21,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var recordingStartTime: Date? = nil
     private var modelReady = false
     private var isMeetingMode = false
+    private var smartSelectionKeyMonitor: Any?
 
     // MARK: - App Lifecycle
 
@@ -268,7 +269,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         floatingPanel?.showAtTopCenter()
         updateUI()
-        dictationController.startRecording(smartMode: false)
+        dictationController.startRecording(smartMode: false, autoStopOnSilence: false)
     }
 
     private func stopMeetingRecording() {
@@ -294,7 +295,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         currentAudioLevel = 0
         recordingStartTime = Date()
 
-        dictationController.startRecording(smartMode: smartMode)
+        dictationController.startRecording(smartMode: smartMode, autoStopOnSilence: true)
         floatingPanel?.showAtTopCenter()
         updateUI()
     }
@@ -307,6 +308,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     // MARK: - Smart Mode
 
     private func showSmartModeOptions() {
+        installSmartSelectionKeyMonitor()
         SoundManager.shared.play(.smartMenuOpen)
         floatingPanel?.updateContent(
             state: .idle,
@@ -321,6 +323,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     private func handleSmartModeSelection(_ option: SmartModeOption) {
+        removeSmartSelectionKeyMonitor()
         recordingState = .processing
         floatingPanel?.updateContent(
             state: .processing,
@@ -338,6 +341,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     private func updateUI() {
         if recordingState == .idle {
+            removeSmartSelectionKeyMonitor()
             floatingPanel?.hidePanel()
             return
         }
@@ -350,6 +354,40 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             recordingStartTime: recordingStartTime,
             onOptionSelected: { _ in }
         )
+    }
+
+    private func installSmartSelectionKeyMonitor() {
+        removeSmartSelectionKeyMonitor()
+
+        smartSelectionKeyMonitor = NSEvent.addGlobalMonitorForEvents(matching: .keyDown) { [weak self] event in
+            Task { @MainActor in
+                self?.handleSmartSelectionKeyEvent(event)
+            }
+        }
+    }
+
+    private func removeSmartSelectionKeyMonitor() {
+        if let smartSelectionKeyMonitor {
+            NSEvent.removeMonitor(smartSelectionKeyMonitor)
+            self.smartSelectionKeyMonitor = nil
+        }
+    }
+
+    private func handleSmartSelectionKeyEvent(_ event: NSEvent) {
+        guard isSmartMode else { return }
+
+        switch event.charactersIgnoringModifiers {
+        case "1":
+            handleSmartModeSelection(.slack)
+        case "2":
+            handleSmartModeSelection(.chat)
+        case "3":
+            handleSmartModeSelection(.email)
+        case "4":
+            handleSmartModeSelection(.prompt)
+        default:
+            break
+        }
     }
 
     // MARK: - Permissions

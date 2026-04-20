@@ -10,6 +10,8 @@
 - [x] Restore visible completion / clipboard completion pills
 - [x] Rebuild preferences window with native Tahoe-style sections
 - [x] Fix pill proportions and waveform animation to match design reference
+- [ ] Replace hybrid pill chrome with 1:1 Dynamic Island-style SwiftUI port
+- [x] Stabilize pill transitions and add keyboard shortcuts for smart mode selection
 - [ ] Remove sidebar toggle / "hide menu" header control from preferences
 - [ ] Route long-press meeting mode through real transcription output path
 
