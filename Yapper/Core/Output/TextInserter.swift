@@ -6,7 +6,7 @@ final class TextInserter: @unchecked Sendable {
 
     // The string value of kAXTrustedCheckOptionPrompt, hardcoded to avoid
     // Swift 6 "concurrency-unsafe mutable state" errors on the C global var.
-    private static let axTrustedKey = "AXTrustedCheckOptionPrompt"
+    static let axTrustedKeyForPrompt = "AXTrustedCheckOptionPrompt"
 
     func insert(text: String, method: InsertionMethod = .axuiElement) -> InsertionOutcome {
         guard !text.isEmpty else { return .accessibility }
@@ -142,12 +142,12 @@ final class TextInserter: @unchecked Sendable {
     // MARK: - Permissions
 
     func checkAccessibilityPermission() -> Bool {
-        let opts = [Self.axTrustedKey: false] as CFDictionary
+        let opts = [Self.axTrustedKeyForPrompt: false] as CFDictionary
         return AXIsProcessTrustedWithOptions(opts)
     }
 
     func requestAccessibilityPermission() {
-        let opts = [Self.axTrustedKey: true] as CFDictionary
+        let opts = [Self.axTrustedKeyForPrompt: true] as CFDictionary
         AXIsProcessTrustedWithOptions(opts)
     }
 }

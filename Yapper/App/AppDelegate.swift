@@ -1,49 +1,44 @@
 import AppKit
-import AVFoundation
 
 @MainActor
 final class AppDelegate: NSObject, NSApplicationDelegate {
     private var statusItem: NSStatusItem?
+    private var statusMenu: NSMenu?
+    private var runtimeStatusItem: NSMenuItem?
     private var floatingPanel: FloatingPanel?
-    private let dictationController = DictationController(
-        audioEngine: AudioEngine(),
-        transcriber: ParakeetTranscriber(),
-        llmProcessor: LLMProcessor(),
-        textInserter: TextInserter()
-    )
-    private let hotkeyManager = HotkeyManager()
-
-    private var recordingState: RecordingState = .idle
-    private var isPendingSmartMode = false
-    private var currentTranscript = ""
-    private var isSmartMode = false
-    private var currentAudioLevel: Float = 0
-    private var recordingStartTime: Date? = nil
-    private var modelReady = false
-    private var isMeetingMode = false
     private var smartSelectionKeyMonitor: Any?
 
-    // MARK: - App Lifecycle
+    private let runtime = AppRuntimeCoordinator(
+        dictationController: DictationController(
+            audioEngine: AudioEngine(),
+            transcriber: ParakeetTranscriber(),
+            llmProcessor: LLMProcessor(),
+            textInserter: TextInserter()
+        ),
+        hotkeyManager: HotkeyManager()
+    )
 
     nonisolated func applicationDidFinishLaunching(_ notification: Notification) {
         Task { @MainActor in
             self.setupMenuBar()
             self.setupFloatingPanel()
-            self.setupHotkey()
-            self.setupDictation()
-            self.requestPermissions()
+            self.bindRuntime()
+            self.runtime.start()
             NSApp.setActivationPolicy(.accessory)
         }
     }
 
-    // MARK: - Setup
+    nonisolated func applicationDidBecomeActive(_ notification: Notification) {
+        Task { @MainActor in
+            self.runtime.appDidBecomeActive()
+        }
+    }
 
     private func setupMenuBar() {
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
 
         if let button = statusItem?.button {
-            // Use icon1.png for menu bar
-            let iconPath = Bundle.main.path(forResource: "icon1", ofType: "png") 
+            let iconPath = Bundle.main.path(forResource: "icon1", ofType: "png")
                 ?? NSHomeDirectory() + "/Documents/projects/Yapper/icon1.png"
             button.image = NSImage(contentsOfFile: iconPath)
             button.image?.size = NSSize(width: 18, height: 18)
@@ -51,6 +46,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
 
         let menu = NSMenu()
+        runtimeStatusItem = NSMenuItem(title: "Status: Starting up...", action: nil, keyEquivalent: "")
+        runtimeStatusItem?.isEnabled = false
+        if let runtimeStatusItem {
+            menu.addItem(runtimeStatusItem)
+        }
+        menu.addItem(.separator())
 
         let recordItem = NSMenuItem(
             title: "Start Recording",
@@ -90,6 +91,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         quitItem.keyEquivalentModifierMask = .command
         menu.addItem(quitItem)
 
+        statusMenu = menu
         statusItem?.menu = menu
     }
 
@@ -97,267 +99,68 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         floatingPanel = FloatingPanel()
     }
 
-    private func setupHotkey() {
-        hotkeyManager.onGesture = { [weak self] gesture in
-            Task { @MainActor in
-                self?.handleGesture(gesture)
-            }
+    private func bindRuntime() {
+        runtime.onStateChange = { [weak self] state in
+            self?.render(state)
         }
-        hotkeyManager.start()
+        render(runtime.state)
     }
 
-    // MARK: - Gesture Handling
+    private func render(_ state: AppRuntimeState) {
+        runtimeStatusItem?.title = statusLine(for: state)
 
-    private func handleGesture(_ gesture: InputGesture) {
-        switch gesture {
-        case .singleTap:
-            if case .recording = recordingState {
-                stopRecording()
-            } else if recordingState == .recordingMeeting {
-                stopMeetingRecording()
-            } else if recordingState == .idle || recordingState == .ready {
-                // UI updates FIRST for instant responsiveness
-                self.isPendingSmartMode = false
-                self.isSmartMode = false
-                self.isMeetingMode = false
-                self.currentTranscript = ""
-                self.currentAudioLevel = 0
-                self.recordingStartTime = Date()
-                
-                // Show UI immediately - then start audio
-                self.recordingState = .recording(isSmartMode: false)
-                self.floatingPanel?.showAtTopCenter()
-                self.updateUI()
-                
-                // Play sound IMMEDIATELY
-                SoundManager.shared.play(.recordingStart)
-                
-                // Start audio capture
-                self.dictationController.startRecording(smartMode: false)
-            }
-
-        case .doubleTap:
-            if case .recording = recordingState {
-                stopRecording()
-                self.recordingState = .idle
-                self.floatingPanel?.hidePanel()
-            } else if recordingState == .recordingMeeting {
-                stopMeetingRecording()
-            } else {
-                // UI updates FIRST for instant responsiveness
-                self.isPendingSmartMode = true
-                self.isSmartMode = true
-                self.isMeetingMode = false
-                self.currentTranscript = ""
-                self.currentAudioLevel = 0
-                self.recordingStartTime = Date()
-                
-                // Show UI immediately - then start audio
-                self.recordingState = .recording(isSmartMode: true)
-                self.floatingPanel?.showAtTopCenter()
-                self.updateUI()
-                
-                // Play sound IMMEDIATELY
-                SoundManager.shared.play(.smartMenuOpen)
-                
-                // Start audio capture
-                self.dictationController.startRecording(smartMode: true)
-            }
-
-        case .holdStart:
-            if recordingState == .idle || recordingState == .ready {
-                startMeetingRecording()
-            } else if recordingState == .recordingMeeting {
-                stopMeetingRecording()
-            } else if case .recording = recordingState {
-                stopRecording()
-            }
-
-        case .holdEnd:
-            break
-        }
-    }
-
-    private func setupDictation() {
-        dictationController.onPartialTranscript = { [weak self] (text: String) in
-            Task { @MainActor in
-                guard let self else { return }
-                // Transition from ready to recording (actively recording) on first partial text
-                if self.recordingState == .ready {
-                    self.recordingState = .recording(isSmartMode: self.isSmartMode)
-                }
-                self.currentTranscript = text
-                self.updateUI()
-            }
-        }
-
-        dictationController.onFinalTranscript = { [weak self] (text: String, insertionOutcome: InsertionOutcome) in
-            Task { @MainActor in
-                guard let self else { return }
-                
-                // Play success sound at the END of the user journey - when text is ready
-                SoundManager.shared.play(.processingComplete)
-                
-                self.currentTranscript = text
-                self.recordingState = insertionOutcome == .clipboard ? .completeClipboard : .complete
-                self.updateUI()
-                
-                Task {
-                    try? await Task.sleep(nanoseconds: 1_200_000_000)
-                    await MainActor.run {
-                        self.recordingState = .idle
-                        self.floatingPanel?.hidePanel()
-                    }
-                }
-            }
-        }
-
-
-        dictationController.onRecordingStopped = { [weak self] in
-            Task { @MainActor in
-                guard let self else { return }
-                if self.isSmartMode {
-                    self.showSmartModeOptions()
-                } else {
-                    self.recordingState = .processing
-                    self.updateUI()
-                }
-            }
-        }
-
-        dictationController.onAudioLevel = { [weak self] (level: Float) in
-            Task { @MainActor in
-                self?.currentAudioLevel = level
-                if case .recording = self?.recordingState {
-                    self?.updateUI()
-                } else if self?.recordingState == .recordingMeeting {
-                    self?.updateUI()
-                }
-            }
-        }
-
-        dictationController.onError = { (error: Error) in
-            print("[Yapper] Error: \(error)")
-        }
-
-        dictationController.onModelLoaded = { [weak self] in
-            Task { @MainActor in
-                self?.modelReady = true
-                print("[Yapper] Model ready, recording enabled")
-            }
-        }
-
-        // Load the Parakeet model in background
-        print("[Yapper] Loading Parakeet model...")
-        Task {
-            await dictationController.loadModel()
-        }
-    }
-
-    // MARK: - Meeting Mode
-
-    private func startMeetingRecording() {
-        guard modelReady else { return }
-        isMeetingMode = true
-        isSmartMode = false
-        recordingState = .recordingMeeting
-        currentTranscript = ""
-        currentAudioLevel = 0
-        recordingStartTime = Date()
-        SoundManager.shared.play(.meetingStart)
-        print("[Yapper] 🎙️ Started Meeting Recording")
-
-        floatingPanel?.showAtTopCenter()
-        updateUI()
-        dictationController.startRecording(smartMode: false, autoStopOnSilence: false)
-    }
-
-    private func stopMeetingRecording() {
-        guard recordingState == .recordingMeeting else { return }
-        recordingState = .processing
-        updateUI()
-        print("[Yapper] 🛑 Stopped Meeting Recording")
-        dictationController.stopRecording()
-    }
-
-    // MARK: - Recording Control
-
-    private func startRecording(smartMode: Bool) {
-        guard modelReady else {
-            print("[Yapper] Model not ready — ignoring start request")
-            return
-        }
-        isMeetingMode = false
-        recordingState = .recording(isSmartMode: smartMode)
-        SoundManager.shared.play(smartMode ? .smartMenuOpen : .recordingStart)
-        isSmartMode = smartMode
-        currentTranscript = ""
-        currentAudioLevel = 0
-        recordingStartTime = Date()
-
-        dictationController.startRecording(smartMode: smartMode, autoStopOnSilence: true)
-        floatingPanel?.showAtTopCenter()
-        updateUI()
-    }
-
-    private func stopRecording() {
-        // Don't play stop sound here - we play success at the END when text is ready
-        dictationController.stopRecording()
-    }
-
-    // MARK: - Smart Mode
-
-    private func showSmartModeOptions() {
-        installSmartSelectionKeyMonitor()
-        SoundManager.shared.play(.smartMenuOpen)
-        floatingPanel?.updateContent(
-            state: .idle,
-            partialTranscript: currentTranscript,
-            showOptions: true,
-            audioLevel: 0,
-            recordingStartTime: recordingStartTime,
-            onOptionSelected: { [weak self] option in
-                self?.handleSmartModeSelection(option)
-            }
-        )
-    }
-
-    private func handleSmartModeSelection(_ option: SmartModeOption) {
-        removeSmartSelectionKeyMonitor()
-        recordingState = .processing
-        floatingPanel?.updateContent(
-            state: .processing,
-            partialTranscript: "",
-            showOptions: false,
-            recordingStartTime: nil,
-            onOptionSelected: { _ in }
-        )
-
-        dictationController.handleSmartModeSelection(option)
-        // onFinalTranscript callback will show completion and then hide the panel
-    }
-
-    // MARK: - UI Updates
-
-    private func updateUI() {
-        if recordingState == .idle {
+        if state.showsSmartOptions {
+            installSmartSelectionKeyMonitor()
+        } else {
             removeSmartSelectionKeyMonitor()
+        }
+
+        if state.displayRecordingState == .idle && !state.showsSmartOptions {
             floatingPanel?.hidePanel()
             return
         }
 
+        floatingPanel?.showAtTopCenter()
         floatingPanel?.updateContent(
-            state: recordingState,
-            partialTranscript: currentTranscript,
-            showOptions: false,
-            audioLevel: currentAudioLevel,
-            recordingStartTime: recordingStartTime,
-            onOptionSelected: { _ in }
+            state: state.displayRecordingState,
+            partialTranscript: state.partialTranscript,
+            showOptions: state.showsSmartOptions,
+            audioLevel: state.audioLevel,
+            recordingStartTime: state.recordingStartTime,
+            onOptionSelected: { [weak self] option in
+                self?.runtime.selectSmartMode(option)
+            }
         )
     }
 
+    private func statusLine(for state: AppRuntimeState) -> String {
+        if !state.modelReady {
+            return "Status: Loading model..."
+        }
+
+        switch state.hotkeyMonitoringStatus {
+        case .ready:
+            return "Status: Hotkeys ready"
+        case .missingPermissions:
+            var missing: [String] = []
+            if state.permissions.accessibility != .authorized {
+                missing.append("Accessibility")
+            }
+            if state.permissions.inputMonitoring != .authorized {
+                missing.append("Input Monitoring")
+            }
+            return "Status: Missing \(missing.joined(separator: " + "))"
+        case .temporarilyDisabled:
+            return "Status: Recovering hotkeys..."
+        case .failedToInstall:
+            return "Status: Hotkeys unavailable"
+        case .stopped:
+            return "Status: Hotkeys stopped"
+        }
+    }
+
     private func installSmartSelectionKeyMonitor() {
-        removeSmartSelectionKeyMonitor()
+        guard smartSelectionKeyMonitor == nil else { return }
 
         smartSelectionKeyMonitor = NSEvent.addGlobalMonitorForEvents(matching: .keyDown) { [weak self] event in
             Task { @MainActor in
@@ -374,71 +177,22 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     private func handleSmartSelectionKeyEvent(_ event: NSEvent) {
-        guard isSmartMode else { return }
-
         switch event.charactersIgnoringModifiers {
         case "1":
-            handleSmartModeSelection(.slack)
+            runtime.selectSmartMode(.slack)
         case "2":
-            handleSmartModeSelection(.chat)
+            runtime.selectSmartMode(.chat)
         case "3":
-            handleSmartModeSelection(.email)
+            runtime.selectSmartMode(.email)
         case "4":
-            handleSmartModeSelection(.prompt)
+            runtime.selectSmartMode(.prompt)
         default:
             break
         }
     }
 
-    // MARK: - Permissions
-
-    private func requestPermissions() {
-        AVCaptureDevice.requestAccess(for: .audio) { [weak self] granted in
-            if !granted {
-                Task { @MainActor in
-                    self?.showPermissionAlert("Microphone")
-                }
-            }
-        }
-
-        let inserter = TextInserter()
-        if !inserter.checkAccessibilityPermission() {
-            inserter.requestAccessibilityPermission()
-        }
-    }
-
-    private func showPermissionAlert(_ permission: String) {
-        let alert = NSAlert()
-        alert.messageText = "\(permission) Permission Required"
-        alert.informativeText = "Yapper needs \(permission) access to function properly. Please enable it in System Settings."
-        alert.alertStyle = .warning
-        alert.addButton(withTitle: "Open System Settings")
-        alert.addButton(withTitle: "Cancel")
-
-        if alert.runModal() == .alertFirstButtonReturn {
-            let urlString: String
-            switch permission {
-            case "Microphone":
-                urlString = "x-apple.systempreferences:com.apple.preference.security?Privacy_Microphone"
-            default:
-                urlString = "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility"
-            }
-            if let url = URL(string: urlString) {
-                NSWorkspace.shared.open(url)
-            }
-        }
-    }
-
-    // MARK: - Menu Actions
-
     @objc private func toggleRecording() {
-        if case .recording = recordingState {
-            stopRecording()
-        } else if recordingState == .recordingMeeting {
-            stopMeetingRecording()
-        } else {
-            startRecording(smartMode: false)
-        }
+        runtime.handleMenuToggleRecording()
     }
 
     @objc private func openPreferences() {
@@ -452,7 +206,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     #endif
 
     @objc private func quitApp() {
-        hotkeyManager.stop()
+        removeSmartSelectionKeyMonitor()
+        runtime.stop()
         NSApp.terminate(nil)
     }
 }

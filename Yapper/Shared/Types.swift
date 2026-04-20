@@ -12,9 +12,82 @@ enum RecordingState: Equatable, Sendable {
     case completeClipboard
 }
 
+enum RuntimeRecordingPhase: Equatable, Sendable {
+    case idle
+    case preparing
+    case recording
+    case recordingSmart
+    case recordingMeeting
+    case processing
+    case selectingSmartMode
+    case completed(InsertionOutcome)
+    case failed(String?)
+}
+
 enum InsertionOutcome: Equatable, Sendable {
     case accessibility
     case clipboard
+}
+
+enum PermissionAuthorizationStatus: String, Codable, Equatable, Sendable {
+    case authorized
+    case denied
+    case notDetermined
+}
+
+struct PermissionSnapshot: Equatable, Sendable {
+    var microphone: PermissionAuthorizationStatus = .notDetermined
+    var accessibility: PermissionAuthorizationStatus = .denied
+    var inputMonitoring: PermissionAuthorizationStatus = .denied
+
+    var hasHotkeyPermissions: Bool {
+        accessibility == .authorized && inputMonitoring == .authorized
+    }
+}
+
+enum HotkeyMonitoringStatus: Equatable, Sendable {
+    case stopped
+    case missingPermissions
+    case temporarilyDisabled
+    case failedToInstall
+    case ready
+}
+
+struct AppRuntimeState: Equatable, Sendable {
+    var recordingPhase: RuntimeRecordingPhase = .idle
+    var permissions: PermissionSnapshot = PermissionSnapshot()
+    var hotkeyMonitoringStatus: HotkeyMonitoringStatus = .stopped
+    var modelReady = false
+    var partialTranscript = ""
+    var audioLevel: Float = 0
+    var recordingStartTime: Date? = nil
+
+    var displayRecordingState: RecordingState {
+        switch recordingPhase {
+        case .idle:
+            return .idle
+        case .preparing:
+            return .ready
+        case .recording:
+            return .recording(isSmartMode: false)
+        case .recordingSmart:
+            return .recording(isSmartMode: true)
+        case .recordingMeeting:
+            return .recordingMeeting
+        case .processing:
+            return .processing
+        case .selectingSmartMode:
+            return .idle
+        case .completed(let outcome):
+            return outcome == .clipboard ? .completeClipboard : .complete
+        case .failed:
+            return .idle
+        }
+    }
+
+    var showsSmartOptions: Bool {
+        recordingPhase == .selectingSmartMode
+    }
 }
 
 // MARK: - Input Gesture

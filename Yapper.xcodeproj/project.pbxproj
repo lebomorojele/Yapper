@@ -1,0 +1,855 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 77;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		0B01D22158402DCF6922FADE /* Types.swift in Sources */ = {isa = PBXBuildFile; fileRef = 073B4BBAAA5689CA97394691 /* Types.swift */; };
+		0C6BC4C9CB7D6FDB681E86E1 /* Yapper.app in Resources */ = {isa = PBXBuildFile; fileRef = 6BA08EA85A315683F4BD1502 /* Yapper.app */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		0E47F37F3FC2CFEF4D1BFAFB /* PermissionManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8564FCE55200CED4C726C305 /* PermissionManager.swift */; };
+		1E86943453DC231FD3AC6284 /* SoundManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = EFAE4405EE17CA2DC36DC245 /* SoundManager.swift */; };
+		1F3A3273964D81774F1EF032 /* Yapper.app in Resources */ = {isa = PBXBuildFile; fileRef = 6BA08EA85A315683F4BD1502 /* Yapper.app */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		2175409BF6FC8C1E2F561DCC /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3C1516EA859EFB98DA178DFC /* SettingsView.swift */; };
+		2732BD08300BB56D63419748 /* ParakeetASR in Frameworks */ = {isa = PBXBuildFile; productRef = 2F836B8DB939DD772A87092A /* ParakeetASR */; };
+		276B6CFED0A74AB5C1EDD1AB /* MockLLMProcessor.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A7BE9BD36C2E957E6373832 /* MockLLMProcessor.swift */; };
+		2C569D59FC78E8640E430E73 /* PreviewCatalog.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA0B125F766957D05296C0D2 /* PreviewCatalog.swift */; };
+		33ABD23A05B66FD1DDA4E1F3 /* LLMProcessor.swift in Sources */ = {isa = PBXBuildFile; fileRef = E2DAAD9D893ED70F830705AF /* LLMProcessor.swift */; };
+		42864D5746450565769974A8 /* GestureInterpreter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5A6796DD7922FF031A768347 /* GestureInterpreter.swift */; };
+		4B7059E381542A8A4BBF4E49 /* HotkeyManagerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1CE3784240D590E96CB14CD3 /* HotkeyManagerTests.swift */; };
+		6D530D260C7B39B4E98DABF9 /* PermissionManagerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B55BCF6C17D3B88759D8D950 /* PermissionManagerTests.swift */; };
+		84867133ADF41EFC0B3CA31A /* DesignCatalogWindowController.swift in Sources */ = {isa = PBXBuildFile; fileRef = B6A84880BC881CEC43B9431B /* DesignCatalogWindowController.swift */; };
+		917C8F2790A8564AFE412180 /* FloatingPanel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 408AD7825754A50595B2F164 /* FloatingPanel.swift */; };
+		93AC8F10D0B87C090B37B8B2 /* TextInserterTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = BFE7E3CC812A8D207C64249A /* TextInserterTests.swift */; };
+		94391811AE97E5F144C66E7A /* TextInserter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 20EEECBBE1FB7F446A9A3349 /* TextInserter.swift */; };
+		970B7D7A5328ED4E9B65E3EF /* SettingsWindowController.swift in Sources */ = {isa = PBXBuildFile; fileRef = E77C589ECCA33EB07C563CBB /* SettingsWindowController.swift */; };
+		A119C91243451914AD65F46E /* DictationController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 97374F08F226A605070C83D2 /* DictationController.swift */; };
+		A6B6E4EFDE476526F892C73B /* Protocols.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0969FFD4947D31F301FBEA66 /* Protocols.swift */; };
+		BA6A834F938F5EDED815CCB6 /* YapperUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = BF772681148466FF264A8A48 /* YapperUITests.swift */; };
+		BC2139E3779CE0F229E5301D /* SettingsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 25A85A5A87E80B1FD2B20CCE /* SettingsTests.swift */; };
+		BF54BD98120C7B5CE8A4DCBD /* main.swift in Sources */ = {isa = PBXBuildFile; fileRef = 19BB48421941291506E2D10A /* main.swift */; };
+		C1EE12D12BA616A0BBA5799E /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6FBFFD168B6D8569B2AACBB7 /* AppDelegate.swift */; };
+		C4B796B092262F62A9648D4A /* TestMocks.swift in Sources */ = {isa = PBXBuildFile; fileRef = 629674E98BFB25C69B083A74 /* TestMocks.swift */; };
+		D131D3C8919D2A21F8D0DA31 /* HotkeyManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = CDFA05761035F6FF0EA0BF3D /* HotkeyManager.swift */; };
+		D2EBC61DFE355FDF0E031C40 /* DictationControllerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0E94F7624BAD54397EB9141D /* DictationControllerTests.swift */; };
+		D76E69330FF4666187F2216B /* ParakeetTranscriber.swift in Sources */ = {isa = PBXBuildFile; fileRef = A64002362B1F2CFAEFC6A27E /* ParakeetTranscriber.swift */; };
+		DD74B8A11C451D8D3D0F5F93 /* PillContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A73779B70DAFBCCDBA2EE49 /* PillContentView.swift */; };
+		F25562C3AF8E16BBEF618EEC /* ParakeetStreamingASR in Frameworks */ = {isa = PBXBuildFile; productRef = EAB08871C10A9DD1323FDB3A /* ParakeetStreamingASR */; };
+		F36C58BA8A785783113B3D7C /* SoundManagerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 71610F02772B3E2D036E84DA /* SoundManagerTests.swift */; };
+		F9D8C937C650592EE2D8442E /* AudioEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7E09282F41773DBDC7B78FD4 /* AudioEngine.swift */; };
+		FA9C81959FB724173A85B990 /* GestureInterpreterTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1C0D31FB2433A4818F3C1BD /* GestureInterpreterTests.swift */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		0664902FBC023E1770FB8AE3 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = D005F96697ECC06C4983B9DF /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 8F397DBCDBED6DE348166D4A;
+			remoteInfo = Yapper;
+		};
+		25A761C242369999E237DA9C /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = D005F96697ECC06C4983B9DF /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 8F397DBCDBED6DE348166D4A;
+			remoteInfo = Yapper;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXFileReference section */
+		073B4BBAAA5689CA97394691 /* Types.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Types.swift; sourceTree = "<group>"; };
+		0969FFD4947D31F301FBEA66 /* Protocols.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Protocols.swift; sourceTree = "<group>"; };
+		0E94F7624BAD54397EB9141D /* DictationControllerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DictationControllerTests.swift; sourceTree = "<group>"; };
+		19BB48421941291506E2D10A /* main.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = main.swift; sourceTree = "<group>"; };
+		1A7BE9BD36C2E957E6373832 /* MockLLMProcessor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MockLLMProcessor.swift; sourceTree = "<group>"; };
+		1B5B7CEEDD63699ADCEE12B5 /* YapperTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = YapperTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		1CE3784240D590E96CB14CD3 /* HotkeyManagerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HotkeyManagerTests.swift; sourceTree = "<group>"; };
+		20EEECBBE1FB7F446A9A3349 /* TextInserter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TextInserter.swift; sourceTree = "<group>"; };
+		25A85A5A87E80B1FD2B20CCE /* SettingsTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsTests.swift; sourceTree = "<group>"; };
+		3C1516EA859EFB98DA178DFC /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
+		408AD7825754A50595B2F164 /* FloatingPanel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FloatingPanel.swift; sourceTree = "<group>"; };
+		4791981F09BEB4C325B2F3E2 /* Yapper */ = {isa = PBXFileReference; lastKnownFileType = folder; name = Yapper; path = .; sourceTree = SOURCE_ROOT; };
+		5A6796DD7922FF031A768347 /* GestureInterpreter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GestureInterpreter.swift; sourceTree = "<group>"; };
+		629674E98BFB25C69B083A74 /* TestMocks.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TestMocks.swift; sourceTree = "<group>"; };
+		6BA08EA85A315683F4BD1502 /* Yapper.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Yapper.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		6FBFFD168B6D8569B2AACBB7 /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
+		71610F02772B3E2D036E84DA /* SoundManagerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SoundManagerTests.swift; sourceTree = "<group>"; };
+		7E09282F41773DBDC7B78FD4 /* AudioEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AudioEngine.swift; sourceTree = "<group>"; };
+		8564FCE55200CED4C726C305 /* PermissionManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PermissionManager.swift; sourceTree = "<group>"; };
+		97374F08F226A605070C83D2 /* DictationController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DictationController.swift; sourceTree = "<group>"; };
+		9A73779B70DAFBCCDBA2EE49 /* PillContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PillContentView.swift; sourceTree = "<group>"; };
+		A1C0D31FB2433A4818F3C1BD /* GestureInterpreterTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GestureInterpreterTests.swift; sourceTree = "<group>"; };
+		A64002362B1F2CFAEFC6A27E /* ParakeetTranscriber.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ParakeetTranscriber.swift; sourceTree = "<group>"; };
+		AA0B125F766957D05296C0D2 /* PreviewCatalog.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PreviewCatalog.swift; sourceTree = "<group>"; };
+		B55BCF6C17D3B88759D8D950 /* PermissionManagerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PermissionManagerTests.swift; sourceTree = "<group>"; };
+		B6A84880BC881CEC43B9431B /* DesignCatalogWindowController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DesignCatalogWindowController.swift; sourceTree = "<group>"; };
+		BF772681148466FF264A8A48 /* YapperUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = YapperUITests.swift; sourceTree = "<group>"; };
+		BFE7E3CC812A8D207C64249A /* TextInserterTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TextInserterTests.swift; sourceTree = "<group>"; };
+		CDFA05761035F6FF0EA0BF3D /* HotkeyManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HotkeyManager.swift; sourceTree = "<group>"; };
+		E2DAAD9D893ED70F830705AF /* LLMProcessor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LLMProcessor.swift; sourceTree = "<group>"; };
+		E77C589ECCA33EB07C563CBB /* SettingsWindowController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsWindowController.swift; sourceTree = "<group>"; };
+		EFAE4405EE17CA2DC36DC245 /* SoundManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SoundManager.swift; sourceTree = "<group>"; };
+		F3248686FA2B1E7FCEF6FFE2 /* YapperUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = YapperUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		544994959C2E2656BA58AB29 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				F25562C3AF8E16BBEF618EEC /* ParakeetStreamingASR in Frameworks */,
+				2732BD08300BB56D63419748 /* ParakeetASR in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		06EFC693B8EDD592DB2D911A /* Transcription */ = {
+			isa = PBXGroup;
+			children = (
+				A64002362B1F2CFAEFC6A27E /* ParakeetTranscriber.swift */,
+			);
+			path = Transcription;
+			sourceTree = "<group>";
+		};
+		1011CD42A4BF9F1B2943E961 /* App */ = {
+			isa = PBXGroup;
+			children = (
+				6FBFFD168B6D8569B2AACBB7 /* AppDelegate.swift */,
+				19BB48421941291506E2D10A /* main.swift */,
+				E77C589ECCA33EB07C563CBB /* SettingsWindowController.swift */,
+			);
+			path = App;
+			sourceTree = "<group>";
+		};
+		1A4329E63C025989069F0E4F /* Panel */ = {
+			isa = PBXGroup;
+			children = (
+			);
+			path = Panel;
+			sourceTree = "<group>";
+		};
+		32F004F810CD5ECD95581643 /* Features */ = {
+			isa = PBXGroup;
+			children = (
+				A0173673EA463D8FE4FC5FB5 /* Dictation */,
+				D5601A8E6A27B9996DB9F7AB /* SmartProcessing */,
+			);
+			path = Features;
+			sourceTree = "<group>";
+		};
+		3D091180238BC6C6C90A9519 = {
+			isa = PBXGroup;
+			children = (
+				A33038F5163CDFAFF6BBED63 /* Packages */,
+				C9C2980B806CE46FB5A3523B /* Yapper */,
+				B6538A5306B8692F154674BF /* YapperTests */,
+				D61C2EDD81013882CD2AC92F /* YapperUITests */,
+				BCAAAA4B33F25976116F8D7E /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		480EDFEB923B96F54846A226 /* Mocks */ = {
+			isa = PBXGroup;
+			children = (
+				1A7BE9BD36C2E957E6373832 /* MockLLMProcessor.swift */,
+				629674E98BFB25C69B083A74 /* TestMocks.swift */,
+			);
+			path = Mocks;
+			sourceTree = "<group>";
+		};
+		504146252A7653FF14031953 /* Utilities */ = {
+			isa = PBXGroup;
+			children = (
+			);
+			path = Utilities;
+			sourceTree = "<group>";
+		};
+		5334E6ED37A93B212F6F3F32 /* State */ = {
+			isa = PBXGroup;
+			children = (
+			);
+			path = State;
+			sourceTree = "<group>";
+		};
+		5B1955FA321E444A839156FF /* Core */ = {
+			isa = PBXGroup;
+			children = (
+				76E202DAA76FC4B416EE1EE4 /* AI */,
+				68115F4CD7B72B14E48F487C /* Audio */,
+				97F2B967365E4F0577D8FA68 /* Input */,
+				FA7DF16A67E3774C766E2801 /* Output */,
+				A077C76F76AD0E21D9FF37D1 /* Permissions */,
+				5334E6ED37A93B212F6F3F32 /* State */,
+				06EFC693B8EDD592DB2D911A /* Transcription */,
+				504146252A7653FF14031953 /* Utilities */,
+			);
+			path = Core;
+			sourceTree = "<group>";
+		};
+		68115F4CD7B72B14E48F487C /* Audio */ = {
+			isa = PBXGroup;
+			children = (
+				7E09282F41773DBDC7B78FD4 /* AudioEngine.swift */,
+				EFAE4405EE17CA2DC36DC245 /* SoundManager.swift */,
+			);
+			path = Audio;
+			sourceTree = "<group>";
+		};
+		766B066D7E2C2F5A4316CEB0 /* UI */ = {
+			isa = PBXGroup;
+			children = (
+				B6A84880BC881CEC43B9431B /* DesignCatalogWindowController.swift */,
+				AA0B125F766957D05296C0D2 /* PreviewCatalog.swift */,
+				F8B23340B62C4C59DF9C1510 /* FloatingPanel */,
+				FC266585FF578FC289B30922 /* MenuBar */,
+				1A4329E63C025989069F0E4F /* Panel */,
+				AB73CDBF4E93ABE9A32E82E9 /* Settings */,
+			);
+			path = UI;
+			sourceTree = "<group>";
+		};
+		76E202DAA76FC4B416EE1EE4 /* AI */ = {
+			isa = PBXGroup;
+			children = (
+				E2DAAD9D893ED70F830705AF /* LLMProcessor.swift */,
+			);
+			path = AI;
+			sourceTree = "<group>";
+		};
+		97F2B967365E4F0577D8FA68 /* Input */ = {
+			isa = PBXGroup;
+			children = (
+				5A6796DD7922FF031A768347 /* GestureInterpreter.swift */,
+				CDFA05761035F6FF0EA0BF3D /* HotkeyManager.swift */,
+			);
+			path = Input;
+			sourceTree = "<group>";
+		};
+		9AFA7D43DF026460BA4F7E30 /* Core */ = {
+			isa = PBXGroup;
+			children = (
+				A1C0D31FB2433A4818F3C1BD /* GestureInterpreterTests.swift */,
+				1CE3784240D590E96CB14CD3 /* HotkeyManagerTests.swift */,
+				B55BCF6C17D3B88759D8D950 /* PermissionManagerTests.swift */,
+				71610F02772B3E2D036E84DA /* SoundManagerTests.swift */,
+				BFE7E3CC812A8D207C64249A /* TextInserterTests.swift */,
+			);
+			path = Core;
+			sourceTree = "<group>";
+		};
+		A0173673EA463D8FE4FC5FB5 /* Dictation */ = {
+			isa = PBXGroup;
+			children = (
+				97374F08F226A605070C83D2 /* DictationController.swift */,
+			);
+			path = Dictation;
+			sourceTree = "<group>";
+		};
+		A077C76F76AD0E21D9FF37D1 /* Permissions */ = {
+			isa = PBXGroup;
+			children = (
+				8564FCE55200CED4C726C305 /* PermissionManager.swift */,
+			);
+			path = Permissions;
+			sourceTree = "<group>";
+		};
+		A33038F5163CDFAFF6BBED63 /* Packages */ = {
+			isa = PBXGroup;
+			children = (
+				4791981F09BEB4C325B2F3E2 /* Yapper */,
+			);
+			name = Packages;
+			sourceTree = "<group>";
+		};
+		AB73CDBF4E93ABE9A32E82E9 /* Settings */ = {
+			isa = PBXGroup;
+			children = (
+				3C1516EA859EFB98DA178DFC /* SettingsView.swift */,
+			);
+			path = Settings;
+			sourceTree = "<group>";
+		};
+		B6538A5306B8692F154674BF /* YapperTests */ = {
+			isa = PBXGroup;
+			children = (
+				0E94F7624BAD54397EB9141D /* DictationControllerTests.swift */,
+				9AFA7D43DF026460BA4F7E30 /* Core */,
+				BB13A8FAA1617A85874B5681 /* Features */,
+				480EDFEB923B96F54846A226 /* Mocks */,
+				C1ECE5D7EB7543EFE0C6E8C7 /* UI */,
+			);
+			name = YapperTests;
+			path = Tests/YapperTests;
+			sourceTree = "<group>";
+		};
+		BB13A8FAA1617A85874B5681 /* Features */ = {
+			isa = PBXGroup;
+			children = (
+			);
+			path = Features;
+			sourceTree = "<group>";
+		};
+		BBEB139193C6C747D815DF3E /* Shared */ = {
+			isa = PBXGroup;
+			children = (
+				0969FFD4947D31F301FBEA66 /* Protocols.swift */,
+				073B4BBAAA5689CA97394691 /* Types.swift */,
+			);
+			path = Shared;
+			sourceTree = "<group>";
+		};
+		BCAAAA4B33F25976116F8D7E /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				6BA08EA85A315683F4BD1502 /* Yapper.app */,
+				1B5B7CEEDD63699ADCEE12B5 /* YapperTests.xctest */,
+				F3248686FA2B1E7FCEF6FFE2 /* YapperUITests.xctest */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		C1ECE5D7EB7543EFE0C6E8C7 /* UI */ = {
+			isa = PBXGroup;
+			children = (
+				25A85A5A87E80B1FD2B20CCE /* SettingsTests.swift */,
+			);
+			path = UI;
+			sourceTree = "<group>";
+		};
+		C9C2980B806CE46FB5A3523B /* Yapper */ = {
+			isa = PBXGroup;
+			children = (
+				1011CD42A4BF9F1B2943E961 /* App */,
+				5B1955FA321E444A839156FF /* Core */,
+				32F004F810CD5ECD95581643 /* Features */,
+				BBEB139193C6C747D815DF3E /* Shared */,
+				766B066D7E2C2F5A4316CEB0 /* UI */,
+			);
+			path = Yapper;
+			sourceTree = "<group>";
+		};
+		D5601A8E6A27B9996DB9F7AB /* SmartProcessing */ = {
+			isa = PBXGroup;
+			children = (
+			);
+			path = SmartProcessing;
+			sourceTree = "<group>";
+		};
+		D61C2EDD81013882CD2AC92F /* YapperUITests */ = {
+			isa = PBXGroup;
+			children = (
+				BF772681148466FF264A8A48 /* YapperUITests.swift */,
+			);
+			name = YapperUITests;
+			path = Tests/YapperUITests;
+			sourceTree = "<group>";
+		};
+		F8B23340B62C4C59DF9C1510 /* FloatingPanel */ = {
+			isa = PBXGroup;
+			children = (
+				408AD7825754A50595B2F164 /* FloatingPanel.swift */,
+				9A73779B70DAFBCCDBA2EE49 /* PillContentView.swift */,
+			);
+			path = FloatingPanel;
+			sourceTree = "<group>";
+		};
+		FA7DF16A67E3774C766E2801 /* Output */ = {
+			isa = PBXGroup;
+			children = (
+				20EEECBBE1FB7F446A9A3349 /* TextInserter.swift */,
+			);
+			path = Output;
+			sourceTree = "<group>";
+		};
+		FC266585FF578FC289B30922 /* MenuBar */ = {
+			isa = PBXGroup;
+			children = (
+			);
+			path = MenuBar;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		237A83AB6A099CDFF2229D9C /* YapperTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = BC4D18E751A97A42B08C2E10 /* Build configuration list for PBXNativeTarget "YapperTests" */;
+			buildPhases = (
+				3BDD19F3009BAB27E7BAECF8 /* Sources */,
+				7BE54B36D2D16E2125D3550B /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				4F7636F83F80A31EF8BB79E7 /* PBXTargetDependency */,
+			);
+			name = YapperTests;
+			packageProductDependencies = (
+			);
+			productName = YapperTests;
+			productReference = 1B5B7CEEDD63699ADCEE12B5 /* YapperTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
+		8F397DBCDBED6DE348166D4A /* Yapper */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 39DA5735934C6B037F2C5A64 /* Build configuration list for PBXNativeTarget "Yapper" */;
+			buildPhases = (
+				35C47D6FAFB1287DF905A65F /* Sources */,
+				544994959C2E2656BA58AB29 /* Frameworks */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = Yapper;
+			packageProductDependencies = (
+				EAB08871C10A9DD1323FDB3A /* ParakeetStreamingASR */,
+				2F836B8DB939DD772A87092A /* ParakeetASR */,
+			);
+			productName = Yapper;
+			productReference = 6BA08EA85A315683F4BD1502 /* Yapper.app */;
+			productType = "com.apple.product-type.application";
+		};
+		E4E451FDF965944509974E23 /* YapperUITests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 9FA097B3C39C41350574FF9A /* Build configuration list for PBXNativeTarget "YapperUITests" */;
+			buildPhases = (
+				946A0BB70A4DD8EF925724D6 /* Sources */,
+				6F360FC02F4634AC23380124 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				42E9A55777C1A375B25656C2 /* PBXTargetDependency */,
+			);
+			name = YapperUITests;
+			packageProductDependencies = (
+			);
+			productName = YapperUITests;
+			productReference = F3248686FA2B1E7FCEF6FFE2 /* YapperUITests.xctest */;
+			productType = "com.apple.product-type.bundle.ui-testing";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		D005F96697ECC06C4983B9DF /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = YES;
+				LastUpgradeCheck = 1500;
+				TargetAttributes = {
+					8F397DBCDBED6DE348166D4A = {
+						ProvisioningStyle = Automatic;
+					};
+					E4E451FDF965944509974E23 = {
+						TestTargetID = 8F397DBCDBED6DE348166D4A;
+					};
+				};
+			};
+			buildConfigurationList = 5D001F24AAEACD8CF497F08F /* Build configuration list for PBXProject "Yapper" */;
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				Base,
+				en,
+			);
+			mainGroup = 3D091180238BC6C6C90A9519;
+			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				E9F1EA3D668F25DB5868B410 /* XCLocalSwiftPackageReference "." */,
+			);
+			preferredProjectObjectVersion = 77;
+			productRefGroup = BCAAAA4B33F25976116F8D7E /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				8F397DBCDBED6DE348166D4A /* Yapper */,
+				237A83AB6A099CDFF2229D9C /* YapperTests */,
+				E4E451FDF965944509974E23 /* YapperUITests */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		6F360FC02F4634AC23380124 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				0C6BC4C9CB7D6FDB681E86E1 /* Yapper.app in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		7BE54B36D2D16E2125D3550B /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				1F3A3273964D81774F1EF032 /* Yapper.app in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		35C47D6FAFB1287DF905A65F /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				C1EE12D12BA616A0BBA5799E /* AppDelegate.swift in Sources */,
+				F9D8C937C650592EE2D8442E /* AudioEngine.swift in Sources */,
+				84867133ADF41EFC0B3CA31A /* DesignCatalogWindowController.swift in Sources */,
+				A119C91243451914AD65F46E /* DictationController.swift in Sources */,
+				917C8F2790A8564AFE412180 /* FloatingPanel.swift in Sources */,
+				42864D5746450565769974A8 /* GestureInterpreter.swift in Sources */,
+				D131D3C8919D2A21F8D0DA31 /* HotkeyManager.swift in Sources */,
+				33ABD23A05B66FD1DDA4E1F3 /* LLMProcessor.swift in Sources */,
+				D76E69330FF4666187F2216B /* ParakeetTranscriber.swift in Sources */,
+				0E47F37F3FC2CFEF4D1BFAFB /* PermissionManager.swift in Sources */,
+				DD74B8A11C451D8D3D0F5F93 /* PillContentView.swift in Sources */,
+				2C569D59FC78E8640E430E73 /* PreviewCatalog.swift in Sources */,
+				A6B6E4EFDE476526F892C73B /* Protocols.swift in Sources */,
+				2175409BF6FC8C1E2F561DCC /* SettingsView.swift in Sources */,
+				970B7D7A5328ED4E9B65E3EF /* SettingsWindowController.swift in Sources */,
+				1E86943453DC231FD3AC6284 /* SoundManager.swift in Sources */,
+				94391811AE97E5F144C66E7A /* TextInserter.swift in Sources */,
+				0B01D22158402DCF6922FADE /* Types.swift in Sources */,
+				BF54BD98120C7B5CE8A4DCBD /* main.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		3BDD19F3009BAB27E7BAECF8 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				D2EBC61DFE355FDF0E031C40 /* DictationControllerTests.swift in Sources */,
+				FA9C81959FB724173A85B990 /* GestureInterpreterTests.swift in Sources */,
+				4B7059E381542A8A4BBF4E49 /* HotkeyManagerTests.swift in Sources */,
+				276B6CFED0A74AB5C1EDD1AB /* MockLLMProcessor.swift in Sources */,
+				6D530D260C7B39B4E98DABF9 /* PermissionManagerTests.swift in Sources */,
+				BC2139E3779CE0F229E5301D /* SettingsTests.swift in Sources */,
+				F36C58BA8A785783113B3D7C /* SoundManagerTests.swift in Sources */,
+				C4B796B092262F62A9648D4A /* TestMocks.swift in Sources */,
+				93AC8F10D0B87C090B37B8B2 /* TextInserterTests.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		946A0BB70A4DD8EF925724D6 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				BA6A834F938F5EDED815CCB6 /* YapperUITests.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		42E9A55777C1A375B25656C2 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 8F397DBCDBED6DE348166D4A /* Yapper */;
+			targetProxy = 25A761C242369999E237DA9C /* PBXContainerItemProxy */;
+		};
+		4F7636F83F80A31EF8BB79E7 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 8F397DBCDBED6DE348166D4A /* Yapper */;
+			targetProxy = 0664902FBC023E1770FB8AE3 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
+/* Begin XCBuildConfiguration section */
+		09F5CA15CBB6008B5673A68F /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = Yapper/Support/Yapper.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				COMBINE_HIDPI_IMAGES = YES;
+				CURRENT_PROJECT_VERSION = 1;
+				ENABLE_HARDENED_RUNTIME = YES;
+				INFOPLIST_FILE = Yapper/Support/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"@executable_path/../Frameworks",
+				);
+				MARKETING_VERSION = 0.3;
+				PRODUCT_BUNDLE_IDENTIFIER = com.yapper.app;
+				PRODUCT_NAME = Yapper;
+				SDKROOT = macosx;
+				SWIFT_VERSION = 6.0;
+			};
+			name = Debug;
+		};
+		2117F8A4F8791883F8393168 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = Yapper/Support/Yapper.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				COMBINE_HIDPI_IMAGES = YES;
+				CURRENT_PROJECT_VERSION = 1;
+				ENABLE_HARDENED_RUNTIME = YES;
+				INFOPLIST_FILE = Yapper/Support/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"@executable_path/../Frameworks",
+				);
+				MARKETING_VERSION = 0.3;
+				PRODUCT_BUNDLE_IDENTIFIER = com.yapper.app;
+				PRODUCT_NAME = Yapper;
+				SDKROOT = macosx;
+				SWIFT_VERSION = 6.0;
+			};
+			name = Release;
+		};
+		26F0B3C7C8E83C7EB3539536 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				COMBINE_HIDPI_IMAGES = YES;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.yapper.uitests;
+				SDKROOT = macosx;
+				SWIFT_VERSION = 6.0;
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Yapper.app/Contents/MacOS/Yapper";
+				TEST_TARGET_NAME = Yapper;
+			};
+			name = Debug;
+		};
+		44BFF7D246CEC416BE1F0845 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"$(inherited)",
+					"DEBUG=1",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				MACOSX_DEPLOYMENT_TARGET = 15.0;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = macosx;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_VERSION = 5.0;
+			};
+			name = Debug;
+		};
+		5E70AEBE8FB052D86E1AB1F5 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				COMBINE_HIDPI_IMAGES = YES;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.yapper.uitests;
+				SDKROOT = macosx;
+				SWIFT_VERSION = 6.0;
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Yapper.app/Contents/MacOS/Yapper";
+				TEST_TARGET_NAME = Yapper;
+			};
+			name = Release;
+		};
+		60BE723D34809A83C2E9B298 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				COMBINE_HIDPI_IMAGES = YES;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+					"@loader_path/../Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.yapper.tests;
+				SDKROOT = macosx;
+				SWIFT_VERSION = 6.0;
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Yapper.app/Contents/MacOS/Yapper";
+			};
+			name = Release;
+		};
+		8492EB864155DE88A3B8AC73 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				COMBINE_HIDPI_IMAGES = YES;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+					"@loader_path/../Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.yapper.tests;
+				SDKROOT = macosx;
+				SWIFT_VERSION = 6.0;
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Yapper.app/Contents/MacOS/Yapper";
+			};
+			name = Debug;
+		};
+		F3B4302C1E8999BECF4A0616 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				MACOSX_DEPLOYMENT_TARGET = 15.0;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = macosx;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+				SWIFT_VERSION = 5.0;
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		39DA5735934C6B037F2C5A64 /* Build configuration list for PBXNativeTarget "Yapper" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				09F5CA15CBB6008B5673A68F /* Debug */,
+				2117F8A4F8791883F8393168 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		5D001F24AAEACD8CF497F08F /* Build configuration list for PBXProject "Yapper" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				44BFF7D246CEC416BE1F0845 /* Debug */,
+				F3B4302C1E8999BECF4A0616 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		9FA097B3C39C41350574FF9A /* Build configuration list for PBXNativeTarget "YapperUITests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				26F0B3C7C8E83C7EB3539536 /* Debug */,
+				5E70AEBE8FB052D86E1AB1F5 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		BC4D18E751A97A42B08C2E10 /* Build configuration list for PBXNativeTarget "YapperTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				8492EB864155DE88A3B8AC73 /* Debug */,
+				60BE723D34809A83C2E9B298 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+/* End XCConfigurationList section */
+
+/* Begin XCLocalSwiftPackageReference section */
+		E9F1EA3D668F25DB5868B410 /* XCLocalSwiftPackageReference "." */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = .;
+		};
+/* End XCLocalSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		2F836B8DB939DD772A87092A /* ParakeetASR */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = ParakeetASR;
+		};
+		EAB08871C10A9DD1323FDB3A /* ParakeetStreamingASR */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = ParakeetStreamingASR;
+		};
+/* End XCSwiftPackageProductDependency section */
+	};
+	rootObject = D005F96697ECC06C4983B9DF /* Project object */;
+}

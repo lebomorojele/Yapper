@@ -14,6 +14,10 @@
 - [x] Stabilize pill transitions and add keyboard shortcuts for smart mode selection
 - [ ] Remove sidebar toggle / "hide menu" header control from preferences
 - [ ] Route long-press meeting mode through real transcription output path
+- [x] Add Hex-inspired runtime coordinator for hotkeys, permissions, and transient app state
+- [x] Refactor hotkey monitoring with explicit status and permission-driven recovery
+- [x] Separate runtime permission/model readiness state from persisted settings
+- [x] Add focused tests for hotkey recovery and meeting-mode silence behavior
 
 ---
 
@@ -43,3 +47,4 @@
 1. Retest single-tap, double-tap, and long-press flows after the latest layout fixes
 2. Start second pass on Hex-inspired production hardening
 3. Capture any remaining visual polish issues from the new screenshots
+4. Resolve SwiftPM UI-test host configuration so `swift test` can run cleanly end-to-end

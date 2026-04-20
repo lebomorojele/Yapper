@@ -2,41 +2,17 @@ import Foundation
 import AppKit
 import CoreGraphics
 
-final class HotkeyManager: @unchecked Sendable {
-    var onGesture: (@Sendable (InputGesture) -> Void)?
+protocol HotkeyEventTapControlling: AnyObject {
+    func install(callback: CGEventTapCallBack, userInfo: UnsafeMutableRawPointer?) -> Bool
+    func setEnabled(_ enabled: Bool)
+    func uninstall()
+}
 
+final class SystemHotkeyEventTapController: HotkeyEventTapControlling {
     private var eventTap: CFMachPort?
     private var runLoopSource: CFRunLoopSource?
-    private let gestureInterpreter = GestureInterpreter()
-    private var fnKeyDown = false
 
-    init() {}
-
-    deinit {
-        stop()
-    }
-
-    func start() {
-        gestureInterpreter.onGesture = { [weak self] gesture in
-            self?.onGesture?(gesture)
-        }
-        setupEventTap()
-    }
-
-    func stop() {
-        if let tap = eventTap {
-            CGEvent.tapEnable(tap: tap, enable: false)
-        }
-        if let source = runLoopSource {
-            CFRunLoopRemoveSource(CFRunLoopGetMain(), source, .commonModes)
-        }
-        eventTap = nil
-        runLoopSource = nil
-    }
-
-    // MARK: - Event Tap Setup
-
-    private func setupEventTap() {
+    func install(callback: CGEventTapCallBack, userInfo: UnsafeMutableRawPointer?) -> Bool {
         let eventMask: CGEventMask = (1 << CGEventType.flagsChanged.rawValue)
 
         guard let tap = CGEvent.tapCreate(
@@ -44,32 +20,127 @@ final class HotkeyManager: @unchecked Sendable {
             place: .headInsertEventTap,
             options: .defaultTap,
             eventsOfInterest: eventMask,
-            callback: hotkeyEventCallback,
-            userInfo: Unmanaged.passUnretained(self).toOpaque()
+            callback: callback,
+            userInfo: userInfo
         ) else {
-            print("[HotkeyManager] ❌ FAILED TO CREATE EVENT TAP — Check Accessibility Permissions!")
-            return
+            return false
         }
 
         eventTap = tap
         runLoopSource = CFMachPortCreateRunLoopSource(kCFAllocatorDefault, tap, 0)
 
-        if let source = runLoopSource {
-            CFRunLoopAddSource(CFRunLoopGetMain(), source, .commonModes)
+        if let runLoopSource {
+            CFRunLoopAddSource(CFRunLoopGetMain(), runLoopSource, .commonModes)
         }
-        CGEvent.tapEnable(tap: tap, enable: true)
-        print("[HotkeyManager] ✅ Event tap installed successfully")
+        setEnabled(true)
+        return true
     }
 
-// MARK: - Event Handling
+    func setEnabled(_ enabled: Bool) {
+        guard let eventTap else { return }
+        CGEvent.tapEnable(tap: eventTap, enable: enabled)
+    }
+
+    func uninstall() {
+        if let eventTap {
+            CGEvent.tapEnable(tap: eventTap, enable: false)
+        }
+        if let runLoopSource {
+            CFRunLoopRemoveSource(CFRunLoopGetMain(), runLoopSource, .commonModes)
+        }
+        eventTap = nil
+        runLoopSource = nil
+    }
+}
+
+final class HotkeyManager: @unchecked Sendable {
+    var onGesture: (@Sendable (InputGesture) -> Void)?
+    var onStatusChanged: (@Sendable (HotkeyMonitoringStatus) -> Void)?
+
+    private let eventTapController: HotkeyEventTapControlling
+    private let gestureInterpreter: GestureInterpreter
+
+    private var fnKeyDown = false
+    private var desiredMonitoring = false
+    private var hasInstalledTap = false
+    private var permissionSnapshot = PermissionSnapshot()
+
+    private(set) var monitoringStatus: HotkeyMonitoringStatus = .stopped {
+        didSet {
+            guard oldValue != monitoringStatus else { return }
+            onStatusChanged?(monitoringStatus)
+        }
+    }
+
+    init(
+        eventTapController: HotkeyEventTapControlling = SystemHotkeyEventTapController(),
+        gestureInterpreter: GestureInterpreter = GestureInterpreter()
+    ) {
+        self.eventTapController = eventTapController
+        self.gestureInterpreter = gestureInterpreter
+        self.gestureInterpreter.onGesture = { [weak self] gesture in
+            self?.onGesture?(gesture)
+        }
+    }
+
+    deinit {
+        stop()
+    }
+
+    func start() {
+        desiredMonitoring = true
+        refreshMonitoringState()
+    }
+
+    func stop() {
+        desiredMonitoring = false
+        teardownEventTap()
+        updateStatus(.stopped)
+    }
+
+    func updatePermissionSnapshot(_ snapshot: PermissionSnapshot) {
+        permissionSnapshot = snapshot
+        refreshMonitoringState()
+    }
+
+    func refreshMonitoringState() {
+        guard desiredMonitoring else {
+            teardownEventTap()
+            updateStatus(.stopped)
+            return
+        }
+
+        guard permissionSnapshot.hasHotkeyPermissions else {
+            teardownEventTap()
+            updateStatus(.missingPermissions)
+            return
+        }
+
+        guard !hasInstalledTap else {
+            updateStatus(.ready)
+            return
+        }
+
+        let installed = eventTapController.install(
+            callback: hotkeyEventCallback,
+            userInfo: Unmanaged.passUnretained(self).toOpaque()
+        )
+
+        hasInstalledTap = installed
+        if installed {
+            print("[HotkeyManager] Event tap installed successfully")
+            updateStatus(.ready)
+        } else {
+            print("[HotkeyManager] Failed to create event tap")
+            updateStatus(.failedToInstall)
+        }
+    }
 
     func handleEvent(type: CGEventType, event: CGEvent) -> Unmanaged<CGEvent>? {
-        // Re-enable tap if system disabled it
         if type == .tapDisabledByTimeout || type == .tapDisabledByUserInput {
-            print("[HotkeyManager] ⚠️ Tap was disabled by system, re-enabling...")
-            if let tap = eventTap {
-                CGEvent.tapEnable(tap: tap, enable: true)
-            }
+            updateStatus(.temporarilyDisabled)
+            eventTapController.setEnabled(true)
+            refreshMonitoringState()
             return Unmanaged.passRetained(event)
         }
 
@@ -78,39 +149,38 @@ final class HotkeyManager: @unchecked Sendable {
         }
 
         let flags = event.flags
-        
-        // Ensure only Fn key flag is relevant (maskSecondaryFn = 0x8000)
-        // If other modifiers are down, ignore
-        let relevantFlags = flags.rawValue & 0xFFFF0000 
+        let relevantFlags = flags.rawValue & 0xFFFF0000
         let currentlyDown = (relevantFlags & CGEventFlags.maskSecondaryFn.rawValue) != 0
         let otherFlags = (relevantFlags & ~CGEventFlags.maskSecondaryFn.rawValue) != 0
 
         if otherFlags && currentlyDown {
             return Unmanaged.passRetained(event)
         }
-        
-        // Debug logging
-        if currentlyDown && !fnKeyDown {
-            print("[HotkeyManager] 🔑 Fn Key DOWN detected")
-        } else if !currentlyDown && fnKeyDown {
-            print("[HotkeyManager] 🔑 Fn Key UP detected")
-        }
 
         if currentlyDown && !fnKeyDown {
             fnKeyDown = true
             gestureInterpreter.keyDown()
-            return nil  // consume fn-down event
+            return nil
         } else if !currentlyDown && fnKeyDown {
             fnKeyDown = false
             gestureInterpreter.keyUp()
-            return nil  // consume fn-up event
+            return nil
         }
 
         return Unmanaged.passRetained(event)
     }
-}
 
-// MARK: - C Callback
+    private func teardownEventTap() {
+        guard hasInstalledTap else { return }
+        eventTapController.uninstall()
+        hasInstalledTap = false
+        fnKeyDown = false
+    }
+
+    private func updateStatus(_ status: HotkeyMonitoringStatus) {
+        monitoringStatus = status
+    }
+}
 
 private func hotkeyEventCallback(
     proxy: CGEventTapProxy,
