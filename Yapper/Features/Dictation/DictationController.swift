@@ -8,16 +8,16 @@ final class DictationController: @unchecked Sendable {
 
     // Callbacks — set by AppDelegate before use
     var onPartialTranscript: (@Sendable (String) -> Void)?
-    var onFinalTranscript: (@Sendable (String, InsertionOutcome) -> Void)?
+    var onSessionFinished: (@Sendable (RecordingSessionResult) -> Void)?
     var onRecordingStopped: (@Sendable () -> Void)?
     var onError: (@Sendable (Error) -> Void)?
-    var onAudioLevel: (@Sendable (Float) -> Void)?
+    var onAudioMeter: (@Sendable (AudioMeter) -> Void)?
     var onModelLoaded: (@Sendable () -> Void)?
 
     private(set) var isModelLoaded = false
     private var isRecording = false
-    private var isSmartMode = false
-    private var autoStopOnSilence = true
+    private var activeConfiguration: RecordingSessionConfiguration?
+    private var activeSession: RecordingSession?
     private var currentTranscript = ""
 
     init(
@@ -41,17 +41,19 @@ final class DictationController: @unchecked Sendable {
         }
 
         audioEngine.onSilence = { [weak self] in
-            guard let self, self.isRecording, self.autoStopOnSilence else { return }
+            guard let self, self.isRecording, self.activeConfiguration?.autoStopOnSilence == true else { return }
             self.stopRecording()
         }
 
-        audioEngine.onLevel = { [weak self] level in
-            self?.onAudioLevel?(level)
+        audioEngine.onMeter = { [weak self] meter in
+            self?.activeSession?.meter = meter
+            self?.onAudioMeter?(meter)
         }
 
         transcriber.onPartial = { [weak self] text in
             guard let self else { return }
             self.currentTranscript = text
+            self.activeSession?.partialTranscript = text
             self.onPartialTranscript?(text)
         }
 
@@ -77,16 +79,16 @@ final class DictationController: @unchecked Sendable {
 
     // MARK: - Recording
 
-    func startRecording(smartMode: Bool = false, autoStopOnSilence: Bool = true) {
+    func startRecording(configuration: RecordingSessionConfiguration) {
         guard !isRecording else { return }
         isRecording = true
-        isSmartMode = smartMode
-        self.autoStopOnSilence = autoStopOnSilence
+        activeConfiguration = configuration
+        activeSession = RecordingSession(purpose: configuration.purpose)
         currentTranscript = ""
 
         let settings = SettingsManager.shared.settings
         audioEngine.silenceThreshold = settings.silenceThreshold
-        audioEngine.silenceDetectionEnabled = autoStopOnSilence && settings.silenceDetectionEnabled
+        audioEngine.silenceDetectionEnabled = configuration.autoStopOnSilence && settings.silenceDetectionEnabled
         audioEngine.inputGain = settings.inputGain
 
         transcriber.start()
@@ -96,21 +98,25 @@ final class DictationController: @unchecked Sendable {
     func stopRecording() {
         guard isRecording else { return }
         isRecording = false
-        autoStopOnSilence = true
 
         audioEngine.stop()
         let finalText = transcriber.stop()
         currentTranscript = finalText
+        if activeSession == nil, let purpose = activeConfiguration?.purpose {
+            activeSession = RecordingSession(purpose: purpose)
+        }
+        activeSession?.partialTranscript = finalText
 
         onRecordingStopped?()
 
-        if !isSmartMode {
-            // Quick dictation — insert text immediately
+        if let activeConfiguration, activeConfiguration.shouldInsertText {
             let settings = SettingsManager.shared.settings
             let insertionOutcome = textInserter.insert(text: finalText, method: settings.insertionMethod)
-            onFinalTranscript?(finalText, insertionOutcome)
+            finishSession(transcript: finalText, insertionOutcome: insertionOutcome)
+        } else if activeConfiguration?.purpose == .meeting {
+            finishSession(transcript: finalText, insertionOutcome: nil)
         }
-        // In smart mode, wait for handleSmartModeSelection
+        // Smart mode waits for an explicit follow-up action.
     }
 
     // MARK: - Smart Mode
@@ -121,7 +127,7 @@ final class DictationController: @unchecked Sendable {
         if option == .cancel {
             let settings = SettingsManager.shared.settings
             let insertionOutcome = textInserter.insert(text: text, method: settings.insertionMethod)
-            onFinalTranscript?(text, insertionOutcome)
+            finishSession(transcript: text, insertionOutcome: insertionOutcome)
             return
         }
 
@@ -131,13 +137,38 @@ final class DictationController: @unchecked Sendable {
                 let processed = try await self.llmProcessor.process(text: text, option: option)
                 let settings = SettingsManager.shared.settings
                 let insertionOutcome = self.textInserter.insert(text: processed, method: settings.insertionMethod)
-                self.onFinalTranscript?(processed, insertionOutcome)
+                self.finishSession(transcript: processed, insertionOutcome: insertionOutcome)
             } catch {
                 print("[DictationController] LLM error: \(error) — falling back to raw text")
                 let settings = SettingsManager.shared.settings
                 let insertionOutcome = self.textInserter.insert(text: text, method: settings.insertionMethod)
-                self.onFinalTranscript?(text, insertionOutcome)
+                self.finishSession(transcript: text, insertionOutcome: insertionOutcome)
             }
         }
+    }
+
+    func discardRecording() {
+        guard isRecording else { return }
+        isRecording = false
+        audioEngine.stop()
+        _ = transcriber.stop()
+        currentTranscript = ""
+        activeConfiguration = nil
+        activeSession = nil
+    }
+
+    private func finishSession(transcript: String, insertionOutcome: InsertionOutcome?) {
+        guard let session = activeSession ?? activeConfiguration.map({ RecordingSession(purpose: $0.purpose) }) else {
+            return
+        }
+
+        let result = RecordingSessionResult(
+            session: session,
+            transcript: transcript,
+            insertionOutcome: insertionOutcome
+        )
+        activeConfiguration = nil
+        activeSession = nil
+        onSessionFinished?(result)
     }
 }

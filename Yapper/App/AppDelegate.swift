@@ -63,6 +63,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         menu.addItem(.separator())
 
+        let historyItem = NSMenuItem(
+            title: "History...",
+            action: #selector(openHistory),
+            keyEquivalent: "h"
+        )
+        historyItem.keyEquivalentModifierMask = .command
+        menu.addItem(historyItem)
+
         let prefsItem = NSMenuItem(
             title: "Preferences...",
             action: #selector(openPreferences),
@@ -125,7 +133,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             state: state.displayRecordingState,
             partialTranscript: state.partialTranscript,
             showOptions: state.showsSmartOptions,
-            audioLevel: state.audioLevel,
+            audioMeter: state.audioMeter,
             recordingStartTime: state.recordingStartTime,
             onOptionSelected: { [weak self] option in
                 self?.runtime.selectSmartMode(option)
@@ -197,6 +205,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     @objc private func openPreferences() {
         SettingsWindowController.shared.show()
+    }
+
+    @objc private func openHistory() {
+        HistoryWindowController.shared.show()
     }
 
     #if DEBUG

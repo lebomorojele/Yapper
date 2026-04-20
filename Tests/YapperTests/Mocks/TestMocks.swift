@@ -5,7 +5,7 @@ import AVFoundation
 final class MockAudioEngine: AudioEngineProtocol {
     var onAudio: (@Sendable ([Float]) -> Void)?
     var onSilence: (@Sendable () -> Void)?
-    var onLevel: (@Sendable (Float) -> Void)?
+    var onMeter: (@Sendable (AudioMeter) -> Void)?
     
     var silenceThreshold: TimeInterval = 1.5
     var silenceDetectionEnabled: Bool = true
@@ -18,7 +18,9 @@ final class MockAudioEngine: AudioEngineProtocol {
     
     // Test helpers
     func simulateSilence() { onSilence?() }
-    func simulateAudio(level: Float) { onLevel?(level) }
+    func simulateAudio(level: Float) {
+        onMeter?(AudioMeter(level: level, peak: level, bars: Array(repeating: level, count: 6)))
+    }
 }
 
 final class MockTranscriber: TranscriberProtocol {
@@ -46,4 +48,109 @@ final class MockTextInserter: TextInserterProtocol {
     }
     func checkAccessibilityPermission() -> Bool { return true }
     func requestAccessibilityPermission() {}
+}
+
+final class MockHistoryStore: HistoryStoreProtocol, @unchecked Sendable {
+    private(set) var entries: [HistoryEntry] = []
+
+    func loadEntries() throws -> [HistoryEntry] {
+        entries
+    }
+
+    func save(entry: HistoryEntry) throws {
+        entries.removeAll { $0.id == entry.id }
+        entries.insert(entry, at: 0)
+    }
+
+    func update(entry: HistoryEntry) throws {
+        try save(entry: entry)
+    }
+}
+
+final class MockPermissionManager: PermissionManaging, @unchecked Sendable {
+    var currentSnapshot = PermissionSnapshot(
+        microphone: .authorized,
+        accessibility: .authorized,
+        inputMonitoring: .authorized
+    )
+    private(set) var requestedMicrophone = false
+    private(set) var requestedAccessibility = false
+    private(set) var requestedInputMonitoring = false
+
+    func snapshot() -> PermissionSnapshot {
+        currentSnapshot
+    }
+
+    func requestMicrophonePermission() async -> PermissionAuthorizationStatus {
+        requestedMicrophone = true
+        return currentSnapshot.microphone
+    }
+
+    func requestAccessibilityPermission() {
+        requestedAccessibility = true
+    }
+
+    func requestInputMonitoringPermission() {
+        requestedInputMonitoring = true
+    }
+}
+
+final class MockHotkeyManager: HotkeyManaging, @unchecked Sendable {
+    var onGesture: (@Sendable (InputGesture) -> Void)?
+    var onStatusChanged: (@Sendable (HotkeyMonitoringStatus) -> Void)?
+
+    private(set) var startCallCount = 0
+    private(set) var stopCallCount = 0
+    private(set) var refreshCallCount = 0
+    private(set) var permissionSnapshots: [PermissionSnapshot] = []
+
+    func start() {
+        startCallCount += 1
+    }
+
+    func stop() {
+        stopCallCount += 1
+    }
+
+    func refreshMonitoringState() {
+        refreshCallCount += 1
+    }
+
+    func updatePermissionSnapshot(_ snapshot: PermissionSnapshot) {
+        permissionSnapshots.append(snapshot)
+    }
+}
+
+final class MockDictationController: DictationControlling, @unchecked Sendable {
+    var onPartialTranscript: (@Sendable (String) -> Void)?
+    var onSessionFinished: (@Sendable (RecordingSessionResult) -> Void)?
+    var onRecordingStopped: (@Sendable () -> Void)?
+    var onError: (@Sendable (Error) -> Void)?
+    var onAudioMeter: (@Sendable (AudioMeter) -> Void)?
+    var onModelLoaded: (@Sendable () -> Void)?
+
+    private(set) var startConfigurations: [RecordingSessionConfiguration] = []
+    private(set) var stopCallCount = 0
+    private(set) var discardCallCount = 0
+    private(set) var selectedOptions: [SmartModeOption] = []
+
+    func loadModel() async {
+        onModelLoaded?()
+    }
+
+    func startRecording(configuration: RecordingSessionConfiguration) {
+        startConfigurations.append(configuration)
+    }
+
+    func stopRecording() {
+        stopCallCount += 1
+    }
+
+    func handleSmartModeSelection(_ option: SmartModeOption) {
+        selectedOptions.append(option)
+    }
+
+    func discardRecording() {
+        discardCallCount += 1
+    }
 }

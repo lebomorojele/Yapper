@@ -4,9 +4,10 @@ import Foundation
 final class AppRuntimeCoordinator {
     var onStateChange: ((AppRuntimeState) -> Void)?
 
-    private let dictationController: DictationController
-    private let hotkeyManager: HotkeyManager
-    private let permissionManager: PermissionManager
+    private let dictationController: DictationControlling
+    private let hotkeyManager: HotkeyManaging
+    private let permissionManager: PermissionManaging
+    private let historyStore: HistoryStoreProtocol
 
     private(set) var state = AppRuntimeState() {
         didSet {
@@ -17,13 +18,15 @@ final class AppRuntimeCoordinator {
     private var completionDismissTask: Task<Void, Never>?
 
     init(
-        dictationController: DictationController,
-        hotkeyManager: HotkeyManager,
-        permissionManager: PermissionManager = .shared
+        dictationController: DictationControlling,
+        hotkeyManager: HotkeyManaging,
+        permissionManager: PermissionManaging = PermissionManager.shared,
+        historyStore: HistoryStoreProtocol = HistoryStore.shared
     ) {
         self.dictationController = dictationController
         self.hotkeyManager = hotkeyManager
         self.permissionManager = permissionManager
+        self.historyStore = historyStore
         bindCallbacks()
     }
 
@@ -35,12 +38,8 @@ final class AppRuntimeCoordinator {
     }
 
     func stop() {
-        completionDismissTask?.cancel()
-        completionDismissTask = nil
+        cleanupForDisposition(.cancel)
         hotkeyManager.stop()
-        if isActiveRecordingPhase(state.recordingPhase) {
-            dictationController.stopRecording()
-        }
         resetToIdle()
     }
 
@@ -56,7 +55,7 @@ final class AppRuntimeCoordinator {
         case .recordingMeeting:
             stopMeetingRecording()
         default:
-            startRecording(smartMode: false)
+            startRecording(purpose: .dictation)
         }
     }
 
@@ -68,29 +67,30 @@ final class AppRuntimeCoordinator {
                 stopActiveRecording()
             case .recordingMeeting:
                 stopMeetingRecording()
-            case .idle, .completed, .failed, .processing, .selectingSmartMode, .preparing:
-                startRecording(smartMode: false)
+            case .idle, .completed, .cancelled, .failed, .processing, .selectingSmartMode, .preparing:
+                startRecording(purpose: .dictation)
             }
 
         case .doubleTap:
             switch state.recordingPhase {
             case .recording, .recordingSmart:
-                stopActiveRecording()
+                cleanupForDisposition(.discard)
                 resetToIdle()
             case .recordingMeeting:
                 stopMeetingRecording()
             default:
-                startRecording(smartMode: true)
+                startRecording(purpose: .smart)
             }
 
         case .holdStart:
             switch state.recordingPhase {
-            case .idle, .completed, .failed, .processing, .selectingSmartMode, .preparing:
-                startMeetingRecording()
+            case .idle, .completed, .cancelled, .failed, .processing, .selectingSmartMode, .preparing:
+                startRecording(purpose: .meeting)
             case .recordingMeeting:
                 stopMeetingRecording()
             case .recording, .recordingSmart:
-                stopActiveRecording()
+                cleanupForDisposition(.cancel)
+                resetToIdle()
             }
 
         case .holdEnd:
@@ -120,23 +120,19 @@ final class AppRuntimeCoordinator {
         dictationController.onPartialTranscript = { [weak self] text in
             Task { @MainActor in
                 guard let self else { return }
-                self.state.partialTranscript = text
+                self.state.session?.partialTranscript = text
                 switch self.state.recordingPhase {
                 case .preparing:
-                    self.state.recordingPhase = .recording
+                    self.state.recordingPhase = self.state.session?.purpose == .smart ? .recordingSmart : .recording
                 default:
                     break
                 }
             }
         }
 
-        dictationController.onFinalTranscript = { [weak self] text, insertionOutcome in
+        dictationController.onSessionFinished = { [weak self] result in
             Task { @MainActor in
-                guard let self else { return }
-                self.state.partialTranscript = text
-                self.state.audioLevel = 0
-                self.state.recordingPhase = .completed(insertionOutcome)
-                self.scheduleCompletionDismiss()
+                self?.handleFinishedSession(result)
             }
         }
 
@@ -146,16 +142,16 @@ final class AppRuntimeCoordinator {
             }
         }
 
-        dictationController.onAudioLevel = { [weak self] level in
+        dictationController.onAudioMeter = { [weak self] meter in
             Task { @MainActor in
-                guard let self else { return }
-                self.state.audioLevel = level
+                self?.state.session?.meter = meter
             }
         }
 
         dictationController.onError = { [weak self] error in
             Task { @MainActor in
                 guard let self else { return }
+                self.cleanupForDisposition(.failure(error.localizedDescription))
                 self.state.recordingPhase = .failed(error.localizedDescription)
                 self.scheduleCompletionDismiss()
             }
@@ -200,7 +196,7 @@ final class AppRuntimeCoordinator {
         }
     }
 
-    private func startRecording(smartMode: Bool) {
+    private func startRecording(purpose: RecordingPurpose) {
         guard state.modelReady else {
             state.recordingPhase = .failed("Model not ready")
             scheduleCompletionDismiss()
@@ -209,29 +205,25 @@ final class AppRuntimeCoordinator {
 
         completionDismissTask?.cancel()
         completionDismissTask = nil
-        state.partialTranscript = ""
-        state.audioLevel = 0
-        state.recordingStartTime = Date()
-        state.recordingPhase = .preparing
 
-        dictationController.startRecording(smartMode: smartMode, autoStopOnSilence: true)
-        state.recordingPhase = smartMode ? .recordingSmart : .recording
-    }
+        let session = RecordingSession(purpose: purpose)
+        state.session = session
+        state.recordingStartTime = session.startedAt
+        state.recordingPhase = purpose == .meeting ? .recordingMeeting : .preparing
 
-    private func startMeetingRecording() {
-        guard state.modelReady else {
-            state.recordingPhase = .failed("Model not ready")
-            scheduleCompletionDismiss()
-            return
+        dictationController.startRecording(
+            configuration: RecordingSessionConfiguration(
+                purpose: purpose,
+                autoStopOnSilence: purpose != .meeting,
+                shouldInsertText: purpose != .meeting && purpose != .smart
+            )
+        )
+
+        if purpose == .dictation {
+            state.recordingPhase = .recording
+        } else if purpose == .smart {
+            state.recordingPhase = .recordingSmart
         }
-
-        completionDismissTask?.cancel()
-        completionDismissTask = nil
-        state.partialTranscript = ""
-        state.audioLevel = 0
-        state.recordingStartTime = Date()
-        state.recordingPhase = .recordingMeeting
-        dictationController.startRecording(smartMode: false, autoStopOnSilence: false)
     }
 
     private func stopActiveRecording() {
@@ -263,6 +255,60 @@ final class AppRuntimeCoordinator {
         }
     }
 
+    private func handleFinishedSession(_ result: RecordingSessionResult) {
+        let duration = max(0, Date().timeIntervalSince(result.session.startedAt))
+        var entry = HistoryEntry(
+            kind: result.session.purpose == .meeting ? .meeting : .dictation,
+            transcript: result.transcript,
+            createdAt: result.session.startedAt,
+            duration: duration,
+            insertionOutcome: result.insertionOutcome
+        )
+
+        if result.session.purpose == .meeting {
+            do {
+                entry.exportedFilePath = try TranscriptExporter.exportTranscript(entry, settings: SettingsManager.shared.settings)
+            } catch {
+                entry.enrichment.lastError = "Could not export transcript: \(error.localizedDescription)"
+            }
+        }
+
+        try? historyStore.save(entry: entry)
+
+        state.session = nil
+        state.recordingStartTime = nil
+        state.recordingPhase = .completed(result.insertionOutcome)
+        scheduleCompletionDismiss()
+    }
+
+    private func cleanupForDisposition(_ disposition: RecordingDisposition) {
+        completionDismissTask?.cancel()
+        completionDismissTask = nil
+
+        switch disposition {
+        case .stop:
+            dictationController.stopRecording()
+        case .cancel, .discard, .failure:
+            dictationController.discardRecording()
+        case .completion:
+            break
+        }
+
+        switch disposition {
+        case .cancel, .discard:
+            state.recordingPhase = .cancelled
+            scheduleCompletionDismiss()
+        case .failure(let error):
+            state.recordingPhase = .failed(error)
+            scheduleCompletionDismiss()
+        case .stop, .completion:
+            break
+        }
+
+        state.session = nil
+        state.recordingStartTime = nil
+    }
+
     private func scheduleCompletionDismiss() {
         completionDismissTask?.cancel()
         completionDismissTask = Task { [weak self] in
@@ -277,17 +323,7 @@ final class AppRuntimeCoordinator {
         completionDismissTask?.cancel()
         completionDismissTask = nil
         state.recordingPhase = .idle
-        state.partialTranscript = ""
-        state.audioLevel = 0
+        state.session = nil
         state.recordingStartTime = nil
-    }
-
-    private func isActiveRecordingPhase(_ phase: RuntimeRecordingPhase) -> Bool {
-        switch phase {
-        case .preparing, .recording, .recordingSmart, .recordingMeeting:
-            return true
-        default:
-            return false
-        }
     }
 }

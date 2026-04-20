@@ -17,10 +17,10 @@ final class AudioEngine: AudioEngineProtocol, @unchecked Sendable {
         set { queue.sync { _onSilence = newValue } }
     }
 
-    private var _onLevel: (@Sendable (Float) -> Void)?
-    var onLevel: (@Sendable (Float) -> Void)? {
-        get { queue.sync { _onLevel } }
-        set { queue.sync { _onLevel = newValue } }
+    private var _onMeter: (@Sendable (AudioMeter) -> Void)?
+    var onMeter: (@Sendable (AudioMeter) -> Void)? {
+        get { queue.sync { _onMeter } }
+        set { queue.sync { _onMeter = newValue } }
     }
 
     var silenceThreshold: TimeInterval = 1.5
@@ -34,8 +34,12 @@ final class AudioEngine: AudioEngineProtocol, @unchecked Sendable {
     private let targetSampleRate: Double = 16000
     private let bufferSize: AVAudioFrameCount = 4096
     private let silenceLevelThreshold: Float = 0.05
+    private let meterBarCount = 6
 
     private var targetFormat: AVAudioFormat?
+    private var smoothedLevel: Float = 0
+    private var smoothedPeak: Float = 0
+    private var rollingBars: [Float] = Array(repeating: 0, count: 6)
 
     init() {
         targetFormat = AVAudioFormat(
@@ -69,6 +73,9 @@ final class AudioEngine: AudioEngineProtocol, @unchecked Sendable {
                 try eng.start()
                 isRunning = true
                 silenceStart = nil
+                smoothedLevel = 0
+                smoothedPeak = 0
+                rollingBars = Array(repeating: 0, count: meterBarCount)
                 print("[AudioEngine] Started — input format: \(inputFormat)")
             } catch {
                 print("[AudioEngine] Failed to start: \(error)")
@@ -84,6 +91,9 @@ final class AudioEngine: AudioEngineProtocol, @unchecked Sendable {
             engine = nil
             isRunning = false
             silenceStart = nil
+            smoothedLevel = 0
+            smoothedPeak = 0
+            rollingBars = Array(repeating: 0, count: meterBarCount)
         }
     }
 
@@ -94,9 +104,12 @@ final class AudioEngine: AudioEngineProtocol, @unchecked Sendable {
 
         // Calculate audio level from raw buffer
         let rms = calculateRMS(buffer)
+        let peak = calculatePeak(buffer)
         let db = 20 * log10(max(rms, 0.0001))
         let normalizedLevel = max(0, min(1, (db + 60) / 60))
-        onLevel?(normalizedLevel)
+        let normalizedPeak = max(0, min(1, peak))
+        let meter = nextMeter(level: normalizedLevel, peak: normalizedPeak)
+        onMeter?(meter)
 
         // Silence detection
         if silenceDetectionEnabled {
@@ -157,5 +170,33 @@ final class AudioEngine: AudioEngineProtocol, @unchecked Sendable {
             sum += s * s
         }
         return sqrt(sum / Float(count))
+    }
+
+    private func calculatePeak(_ buffer: AVAudioPCMBuffer) -> Float {
+        guard let data = buffer.floatChannelData?[0] else { return 0 }
+        let count = Int(buffer.frameLength)
+        guard count > 0 else { return 0 }
+
+        var peak: Float = 0
+        for i in 0..<count {
+            peak = max(peak, abs(data[i] * inputGain))
+        }
+        return peak
+    }
+
+    private func nextMeter(level: Float, peak: Float) -> AudioMeter {
+        smoothedLevel = (smoothedLevel * 0.72) + (level * 0.28)
+        smoothedPeak = max(peak, smoothedPeak * 0.82)
+
+        if !rollingBars.isEmpty {
+            rollingBars.removeFirst()
+        }
+        rollingBars.append(min(1, max(0.02, (smoothedLevel * 0.85) + (smoothedPeak * 0.15))))
+
+        return AudioMeter(
+            level: smoothedLevel,
+            peak: smoothedPeak,
+            bars: rollingBars
+        )
     }
 }

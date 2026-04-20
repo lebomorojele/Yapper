@@ -21,6 +21,24 @@
 
 ---
 
+## v0.4 Production Pass 1 (In Progress)
+- [x] Replace decorative pill waveform with live audio-meter-driven bars
+- [x] Introduce session-oriented recording/runtime types for dictation, smart mode, and meetings
+- [x] Persist transcript-first meeting/dictation history in a dedicated history store
+- [x] Add shared history window with type tags and manual AI follow-up actions
+- [x] Route meeting completion into history/export instead of text insertion
+- [x] Improve pill polish with centered live transcript and canceled-state feedback
+- [x] Finish phase-2 recording/transcription cleanup across all exit paths
+- [x] Patch and expand tests for new session/history flows
+- [x] Re-run release build and SwiftPM tests cleanly
+- [x] Split SwiftPM tests from app-hosted UI tests so `swift test` can stay reliable
+- [x] Add history quick actions and transcript export coverage
+- [x] Clean low-risk runtime warnings in transcriber and sound playback
+- [x] Capture a real SwiftPM coverage baseline for app-owned code
+- [x] Add a focused manual hotkey QA checklist
+
+---
+
 ## v0.3 Priorities (Done)
 - [x] Native Preferences Window
 - [x] Permissions & Accessibility status
@@ -33,7 +51,7 @@
 ## v0.4 Planning (Future)
 
 ### 1. Features
-- [ ] Meeting transcription persistence
+- [x] Meeting transcription persistence
 - [ ] One-tap summaries (LLM integration)
 - [ ] Action item extraction
 
@@ -44,7 +62,7 @@
 ---
 
 ## Next Actions
-1. Retest single-tap, double-tap, and long-press flows after the latest layout fixes
-2. Start second pass on Hex-inspired production hardening
-3. Capture any remaining visual polish issues from the new screenshots
-4. Resolve SwiftPM UI-test host configuration so `swift test` can run cleanly end-to-end
+1. Run the hotkey QA checklist against the latest release binary
+2. Refine shared history UX and decide how first-class summary/action-item actions should be
+3. Raise logic-layer coverage in hotkey, dictation, and insertion paths
+4. Expand beyond SwiftPM unit/integration coverage into higher-level app-hosted scenarios

@@ -31,13 +31,13 @@ struct DesignCatalogView: View {
                 
                 switch selectedState {
                 case .idle:
-                    PillContentView(state: .idle, partialTranscript: "", showOptions: false, audioLevel: 0)
+                    PillContentView(state: .idle, partialTranscript: "", showOptions: false, audioMeter: .empty)
                 case .normal:
                     PillContentView(
                         state: .recording(isSmartMode: false),
                         partialTranscript: "I am dictating a message",
                         showOptions: false,
-                        audioLevel: 0.6,
+                        audioMeter: AudioMeter(level: 0.6, peak: 0.7, bars: [0.2, 0.5, 0.7, 0.4, 0.3, 0.1]),
                         recordingStartTime: Date().addingTimeInterval(-6)
                     )
                 case .smart:
@@ -45,7 +45,7 @@ struct DesignCatalogView: View {
                         state: .recording(isSmartMode: true),
                         partialTranscript: "Convert this to an email",
                         showOptions: false,
-                        audioLevel: 0.8,
+                        audioMeter: AudioMeter(level: 0.8, peak: 0.9, bars: [0.3, 0.6, 0.9, 0.7, 0.5, 0.2]),
                         recordingStartTime: Date().addingTimeInterval(-15)
                     )
                 case .meeting:
@@ -53,7 +53,7 @@ struct DesignCatalogView: View {
                         state: .recordingMeeting,
                         partialTranscript: "",
                         showOptions: false,
-                        audioLevel: 0.8,
+                        audioMeter: AudioMeter(level: 0.8, peak: 0.9, bars: [0.3, 0.6, 0.9, 0.7, 0.5, 0.2]),
                         recordingStartTime: Date().addingTimeInterval(-120)
                     )
                 case .processing:
@@ -61,14 +61,14 @@ struct DesignCatalogView: View {
                         state: .processing,
                         partialTranscript: "",
                         showOptions: false,
-                        audioLevel: 0
+                        audioMeter: .empty
                     )
                 case .options:
                     PillContentView(
                         state: .idle,
                         partialTranscript: "Convert this to an email",
                         showOptions: true,
-                        audioLevel: 0
+                        audioMeter: .empty
                     )
                 case .none:
                     Text("Select a state")

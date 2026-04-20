@@ -48,7 +48,7 @@ final class FloatingPanel: NSPanel {
         state: RecordingState,
         partialTranscript: String,
         showOptions: Bool,
-        audioLevel: Float = 0,
+        audioMeter: AudioMeter = .empty,
         recordingStartTime: Date? = nil,
         onOptionSelected: @escaping (SmartModeOption) -> Void
     ) {
@@ -56,7 +56,7 @@ final class FloatingPanel: NSPanel {
             state: state,
             partialTranscript: partialTranscript,
             showOptions: showOptions,
-            audioLevel: audioLevel,
+            audioMeter: audioMeter,
             recordingStartTime: recordingStartTime,
             onOptionSelected: onOptionSelected
         )

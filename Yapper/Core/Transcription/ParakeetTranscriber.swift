@@ -1,7 +1,7 @@
 import Foundation
 import ParakeetStreamingASR
 
-final class ParakeetTranscriber: TranscriberProtocol {
+final class ParakeetTranscriber: TranscriberProtocol, @unchecked Sendable {
     var onPartial: (@Sendable (String) -> Void)?
     var onFinal: (@Sendable (String) -> Void)?
 

@@ -38,6 +38,20 @@ final class LLMProcessor: @unchecked Sendable {
         return try await callOpenAI(prompt: prompt, apiKey: apiKey, model: settings.llmModel)
     }
 
+    func process(text: String, instruction: String) async throws -> String {
+        let settings = SettingsManager.shared.settings
+        let apiKey = settings.openAIAPIKey
+            ?? ProcessInfo.processInfo.environment["OPENAI_API_KEY"]
+
+        guard let apiKey, !apiKey.isEmpty else {
+            print("[LLM] No API key — returning raw text")
+            return text
+        }
+
+        let prompt = "\(instruction)\n\n\(text)"
+        return try await callOpenAI(prompt: prompt, apiKey: apiKey, model: settings.llmModel)
+    }
+
     // MARK: - OpenAI API
 
     private func callOpenAI(prompt: String, apiKey: String, model: String) async throws -> String {

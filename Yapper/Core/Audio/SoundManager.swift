@@ -41,7 +41,7 @@ final class SoundManager: @unchecked Sendable {
             
             process.arguments = [soundPath]
             try? process.run()
-            try? process.waitUntilExit()
+            process.waitUntilExit()
         }
     }
 }

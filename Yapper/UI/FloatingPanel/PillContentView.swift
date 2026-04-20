@@ -7,6 +7,7 @@ private enum PillRecordingState: Equatable {
     case recording(duration: TimeInterval, liveText: String)
     case processing
     case selecting
+    case cancelled
     case complete(mode: PillTranscriptionMode, showCopied: Bool)
 }
 
@@ -15,6 +16,7 @@ private enum PillVisualMode: Equatable {
     case recording
     case processing
     case selecting
+    case cancelled
     case complete(showCopied: Bool)
 }
 
@@ -44,7 +46,7 @@ struct PillContentView: View {
     var state: RecordingState = .idle
     var partialTranscript: String = ""
     var showOptions: Bool = false
-    var audioLevel: Float = 0
+    var audioMeter: AudioMeter = .empty
     var recordingStartTime: Date? = nil
     var onOptionSelected: (SmartModeOption) -> Void = { _ in }
 
@@ -68,6 +70,8 @@ struct PillContentView: View {
             )
         case .processing:
             return .processing
+        case .cancelled:
+            return .cancelled
         case .complete:
             return .complete(mode: .init(id: "complete", label: "Complete", shortcut: ""), showCopied: false)
         case .completeClipboard:
@@ -85,6 +89,8 @@ struct PillContentView: View {
             return .processing
         case .selecting:
             return .selecting
+        case .cancelled:
+            return .cancelled
         case .complete(_, let showCopied):
             return .complete(showCopied: showCopied)
         }
@@ -95,7 +101,7 @@ struct PillContentView: View {
             DynamicIslandWidget(
                 state: pillState,
                 visualMode: visualMode,
-                audioLevel: audioLevel,
+                audioMeter: audioMeter,
                 onOptionSelected: onOptionSelected
             )
         }
@@ -113,7 +119,7 @@ struct PillContentView: View {
 private struct DynamicIslandWidget: View {
     let state: PillRecordingState
     let visualMode: PillVisualMode
-    let audioLevel: Float
+    let audioMeter: AudioMeter
     let onOptionSelected: (SmartModeOption) -> Void
 
     var body: some View {
@@ -136,6 +142,8 @@ private struct DynamicIslandWidget: View {
             return 90
         case .selecting:
             return PillContainerMetrics.optionsWidth
+        case .cancelled:
+            return 130
         case .complete(_, let showCopied):
             return showCopied ? 160 : 130
         }
@@ -151,6 +159,8 @@ private struct DynamicIslandWidget: View {
             return 38
         case .selecting:
             return 98
+        case .cancelled:
+            return 38
         case .complete:
             return 38
         }
@@ -166,8 +176,8 @@ private struct DynamicIslandWidget: View {
         case .recording(let duration, let liveText):
             RecordingView(
                 duration: duration,
-                liveText: liveText.isEmpty ? "The brown red dog..." : liveText,
-                audioLevel: audioLevel
+                liveText: liveText,
+                audioMeter: audioMeter
             )
             .transition(.opacity)
 
@@ -177,6 +187,10 @@ private struct DynamicIslandWidget: View {
 
         case .selecting:
             SelectingView(onSelect: onOptionSelected)
+                .transition(.opacity)
+
+        case .cancelled:
+            CancelledView()
                 .transition(.opacity)
 
         case .complete(let mode, let showCopied):
@@ -202,30 +216,31 @@ private struct IdleView: View {
 private struct RecordingView: View {
     let duration: TimeInterval
     let liveText: String
-    let audioLevel: Float
+    let audioMeter: AudioMeter
 
     var body: some View {
-        HStack(spacing: 12) {
-            Circle()
-                .fill(.red)
-                .frame(width: 8, height: 8)
-                .modifier(PulseModifier())
+        ZStack {
+            HStack(spacing: 10) {
+                Circle()
+                    .fill(.red)
+                    .frame(width: 8, height: 8)
+                    .modifier(PulseModifier())
 
-            Text(duration.formatted)
-                .font(.system(size: 11, weight: .medium).monospacedDigit())
-                .foregroundStyle(.white.opacity(0.9))
+                WaveformDots(audioMeter: audioMeter)
 
-            if true {
-                WaveformDots(audioLevel: audioLevel)
-            } else {
-                Text(liveText)
-                    .font(.system(size: 11))
-                    .foregroundStyle(.white.opacity(0.4))
-                    .lineLimit(1)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .contentTransition(.numericText())
-                    .animation(.easeInOut(duration: 0.15), value: liveText)
+                Spacer()
+
+                Text(duration.formatted)
+                    .font(.system(size: 11, weight: .medium).monospacedDigit())
+                    .foregroundStyle(.white.opacity(0.9))
             }
+
+            Text(liveText)
+                .font(.system(size: 11))
+                .foregroundStyle(.white.opacity(0.45))
+                .lineLimit(1)
+                .truncationMode(.tail)
+                .frame(maxWidth: 110, alignment: .center)
         }
         .padding(.horizontal, 16)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -253,6 +268,24 @@ private struct ProcessingView: View {
             Text("...")
                 .font(.system(size: 11))
                 .foregroundStyle(.white.opacity(0.5))
+        }
+        .padding(.horizontal, 16)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+}
+
+// MARK: - Cancelled View
+
+private struct CancelledView: View {
+    var body: some View {
+        HStack(spacing: 8) {
+            Image(systemName: "xmark")
+                .font(.system(size: 11, weight: .bold))
+                .foregroundStyle(.white.opacity(0.85))
+
+            Text("Canceled")
+                .font(.system(size: 11, weight: .medium))
+                .foregroundStyle(.white.opacity(0.8))
         }
         .padding(.horizontal, 16)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -366,23 +399,22 @@ private struct CompleteView: View {
 // MARK: - Waveform Dots
 
 private struct WaveformDots: View {
-    let audioLevel: Float
+    let audioMeter: AudioMeter
 
     var body: some View {
         HStack(spacing: 3) {
-            ForEach(0..<4, id: \.self) { i in
+            ForEach(Array(audioMeter.bars.enumerated()), id: \.offset) { index, value in
                 Capsule()
-                    .fill(.white.opacity(0.8))
-                    .frame(width: 4, height: height(for: i))
-                    .modifier(WaveDotModifier(delay: Double(i) * 0.15))
+                    .fill(index < 4 ? Color(red: 0.98, green: 0.21, blue: 0.20) : .white.opacity(0.35))
+                    .frame(width: 4, height: height(for: value))
+                    .animation(.easeOut(duration: 0.08), value: value)
             }
         }
     }
 
-    private func height(for index: Int) -> CGFloat {
-        let pulse = max(0.25, CGFloat(audioLevel))
-        let heights: [CGFloat] = [6, 9, 12, 8]
-        return heights[index] * (0.65 + pulse * 0.5)
+    private func height(for value: Float) -> CGFloat {
+        let clamped = max(0.05, min(1, CGFloat(value)))
+        return 3 + (clamped * 12)
     }
 }
 
@@ -397,24 +429,6 @@ private struct PulseModifier: ViewModifier {
             .onAppear {
                 withAnimation(.easeInOut(duration: 1.2).repeatForever(autoreverses: true)) {
                     opacity = 0.4
-                }
-            }
-    }
-}
-
-private struct WaveDotModifier: ViewModifier {
-    let delay: Double
-    @State private var scale: CGFloat = 1
-    @State private var opacity: Double = 0.4
-
-    func body(content: Content) -> some View {
-        content
-            .scaleEffect(scale)
-            .opacity(opacity)
-            .onAppear {
-                withAnimation(.easeInOut(duration: 0.6).repeatForever(autoreverses: true).delay(delay)) {
-                    scale = 1.5
-                    opacity = 1
                 }
             }
     }

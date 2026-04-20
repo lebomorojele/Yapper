@@ -10,6 +10,7 @@ enum RecordingState: Equatable, Sendable {
     case processing
     case complete
     case completeClipboard
+    case cancelled
 }
 
 enum RuntimeRecordingPhase: Equatable, Sendable {
@@ -20,13 +21,70 @@ enum RuntimeRecordingPhase: Equatable, Sendable {
     case recordingMeeting
     case processing
     case selectingSmartMode
-    case completed(InsertionOutcome)
+    case completed(InsertionOutcome?)
+    case cancelled
     case failed(String?)
 }
 
-enum InsertionOutcome: Equatable, Sendable {
+enum InsertionOutcome: String, Codable, Equatable, Sendable {
     case accessibility
     case clipboard
+}
+
+enum RecordingPurpose: String, Codable, Equatable, Sendable {
+    case dictation
+    case smart
+    case meeting
+}
+
+enum RecordingDisposition: Equatable, Sendable {
+    case stop
+    case cancel
+    case discard
+    case failure(String?)
+    case completion
+}
+
+struct RecordingSession: Equatable, Sendable {
+    let id: UUID
+    let purpose: RecordingPurpose
+    let startedAt: Date
+    var partialTranscript: String
+    var meter: AudioMeter
+
+    init(
+        id: UUID = UUID(),
+        purpose: RecordingPurpose,
+        startedAt: Date = Date(),
+        partialTranscript: String = "",
+        meter: AudioMeter = .empty
+    ) {
+        self.id = id
+        self.purpose = purpose
+        self.startedAt = startedAt
+        self.partialTranscript = partialTranscript
+        self.meter = meter
+    }
+}
+
+struct RecordingSessionConfiguration: Equatable, Sendable {
+    var purpose: RecordingPurpose
+    var autoStopOnSilence: Bool
+    var shouldInsertText: Bool
+}
+
+struct RecordingSessionResult: Equatable, Sendable {
+    var session: RecordingSession
+    var transcript: String
+    var insertionOutcome: InsertionOutcome?
+}
+
+struct AudioMeter: Codable, Equatable, Sendable {
+    var level: Float
+    var peak: Float
+    var bars: [Float]
+
+    static let empty = AudioMeter(level: 0, peak: 0, bars: Array(repeating: 0, count: 6))
 }
 
 enum PermissionAuthorizationStatus: String, Codable, Equatable, Sendable {
@@ -58,8 +116,7 @@ struct AppRuntimeState: Equatable, Sendable {
     var permissions: PermissionSnapshot = PermissionSnapshot()
     var hotkeyMonitoringStatus: HotkeyMonitoringStatus = .stopped
     var modelReady = false
-    var partialTranscript = ""
-    var audioLevel: Float = 0
+    var session: RecordingSession? = nil
     var recordingStartTime: Date? = nil
 
     var displayRecordingState: RecordingState {
@@ -80,6 +137,8 @@ struct AppRuntimeState: Equatable, Sendable {
             return .idle
         case .completed(let outcome):
             return outcome == .clipboard ? .completeClipboard : .complete
+        case .cancelled:
+            return .cancelled
         case .failed:
             return .idle
         }
@@ -87,6 +146,14 @@ struct AppRuntimeState: Equatable, Sendable {
 
     var showsSmartOptions: Bool {
         recordingPhase == .selectingSmartMode
+    }
+
+    var partialTranscript: String {
+        session?.partialTranscript ?? ""
+    }
+
+    var audioMeter: AudioMeter {
+        session?.meter ?? .empty
     }
 }
 
@@ -159,6 +226,56 @@ struct TranscriptionMode: Codable, Identifiable, Sendable {
     var id: UUID = UUID()
     var name: String
     var prompt: String
+}
+
+enum HistoryEntryKind: String, Codable, CaseIterable, Identifiable, Sendable {
+    case dictation
+    case meeting
+
+    var id: String { rawValue }
+}
+
+struct HistoryEnrichment: Codable, Equatable, Sendable {
+    var summary: String?
+    var actionItems: [String]
+    var lastError: String?
+
+    init(summary: String? = nil, actionItems: [String] = [], lastError: String? = nil) {
+        self.summary = summary
+        self.actionItems = actionItems
+        self.lastError = lastError
+    }
+}
+
+struct HistoryEntry: Codable, Identifiable, Equatable, Sendable {
+    var id: UUID
+    var kind: HistoryEntryKind
+    var transcript: String
+    var createdAt: Date
+    var duration: TimeInterval
+    var insertionOutcome: InsertionOutcome?
+    var exportedFilePath: String?
+    var enrichment: HistoryEnrichment
+
+    init(
+        id: UUID = UUID(),
+        kind: HistoryEntryKind,
+        transcript: String,
+        createdAt: Date = Date(),
+        duration: TimeInterval,
+        insertionOutcome: InsertionOutcome? = nil,
+        exportedFilePath: String? = nil,
+        enrichment: HistoryEnrichment = HistoryEnrichment()
+    ) {
+        self.id = id
+        self.kind = kind
+        self.transcript = transcript
+        self.createdAt = createdAt
+        self.duration = duration
+        self.insertionOutcome = insertionOutcome
+        self.exportedFilePath = exportedFilePath
+        self.enrichment = enrichment
+    }
 }
 
 // MARK: - Settings
