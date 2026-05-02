@@ -215,9 +215,10 @@ private struct GeneralPreferencesPane: View {
 
                     switch localModel.status {
                     case .notInstalled:
-                        Button("Download") {
+                        Button("Download Recommended") {
                             model.setEnhancedCleanupPreference(.enabled)
                             localModel.downloadModel()
+                            ModelDownloadWindowController.shared.show()
                         }
                     case .downloading:
                         Button("Cancel") {
@@ -378,7 +379,7 @@ private struct KeyboardPreferencesPane: View {
 private struct AboutPreferencesPane: View {
     var body: some View {
         VStack(spacing: 16) {
-            Image(nsImage: NSApplication.shared.applicationIconImage)
+            Image(nsImage: BrandAssets.appIconImage(size: 72) ?? NSApplication.shared.applicationIconImage)
                 .resizable()
                 .interpolation(.high)
                 .frame(width: 72, height: 72)

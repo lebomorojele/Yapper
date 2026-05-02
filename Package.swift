@@ -24,6 +24,7 @@ let package = Package(
             ],
             resources: [
                 .process("Assets.xcassets"),
+                .copy("BrandResources"),
                 .copy("LocalInference"),
                 .copy("MenuBarResources"),
                 .copy("Sounds")

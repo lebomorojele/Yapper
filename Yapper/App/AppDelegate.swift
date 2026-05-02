@@ -1,4 +1,5 @@
 import AppKit
+import Combine
 
 @MainActor
 final class AppDelegate: NSObject, NSApplicationDelegate {
@@ -9,6 +10,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var floatingPanel: FloatingPanel?
     private var processingIndicatorTask: Task<Void, Never>?
     private var previousSoundState: RecordingState?
+    private var modelStatusCancellable: AnyCancellable?
 
     private let runtime = AppRuntimeCoordinator(
         dictationController: DictationController(
@@ -97,6 +99,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         runtime.onStateChange = { [weak self] state in
             self?.render(state)
         }
+        modelStatusCancellable = LocalModelManager.shared.$status.sink { [weak self] _ in
+            guard let self else { return }
+            self.render(self.runtime.state)
+        }
         render(runtime.state)
     }
 
@@ -149,6 +155,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             break
         }
 
+        switch LocalModelManager.shared.status {
+        case .downloading(let progress):
+            return "Yapper: Downloading cleanup \(Int(progress * 100))%"
+        case .verifying:
+            return "Yapper: Verifying cleanup..."
+        case .failed:
+            return "Yapper: Cleanup download failed"
+        case .notInstalled, .ready:
+            break
+        }
+
         switch state.hotkeyMonitoringStatus {
         case .ready:
             return "Yapper: Ready"
@@ -184,7 +201,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         case .cancelled, .failed:
             button.contentTintColor = .systemOrange
         case .idle, .loading:
-            button.contentTintColor = nil
+            switch LocalModelManager.shared.status {
+            case .downloading, .verifying:
+                button.contentTintColor = .controlAccentColor
+            case .failed:
+                button.contentTintColor = .systemOrange
+            case .notInstalled, .ready:
+                button.contentTintColor = nil
+            }
         }
     }
 
@@ -242,20 +266,22 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             guard SettingsManager.shared.settings.enhancedCleanupPreference == .undecided else { return }
 
             let alert = NSAlert()
-            alert.messageText = "Enable Enhanced Local Cleanup?"
+            alert.icon = BrandAssets.appIconImage(size: 72)
+            alert.messageText = "Recommended: Enhanced Local Cleanup"
             alert.informativeText = """
-            Yapper can download a local language model to improve punctuation, casing, and cleanup for longer dictations. The model runs on your Mac and is about \(LocalModelManager.modelDisplaySize).
+            Yapper is ready to use now. For smoother punctuation and casing on longer dictations, we recommend downloading a local cleanup model.
 
-            Dictation still works without it, and you can add or remove it later in Settings.
+            It runs on your Mac, comes from Hugging Face, and is about \(LocalModelManager.modelDisplaySize). You can remove it later in Settings.
             """
             alert.alertStyle = .informational
-            alert.addButton(withTitle: "Download Model")
+            alert.addButton(withTitle: "Download Recommended Model")
             alert.addButton(withTitle: "Not Now")
 
             NSApp.activate(ignoringOtherApps: true)
             let response = alert.runModal()
             if response == .alertFirstButtonReturn {
                 LocalModelManager.shared.downloadModel()
+                ModelDownloadWindowController.shared.show()
             } else {
                 LocalModelManager.shared.markDeclined()
             }
