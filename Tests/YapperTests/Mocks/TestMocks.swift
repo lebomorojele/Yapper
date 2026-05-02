@@ -6,17 +6,16 @@ final class MockAudioEngine: AudioEngineProtocol {
     var onAudio: (@Sendable ([Float]) -> Void)?
     var onSilence: (@Sendable () -> Void)?
     var onMeter: (@Sendable (AudioMeter) -> Void)?
-    
+
     var silenceThreshold: TimeInterval = 1.5
     var silenceDetectionEnabled: Bool = true
     var inputGain: Float = 1.0
-    
+
     var isRunning = false
-    
+
     func start() { isRunning = true }
     func stop() { isRunning = false }
-    
-    // Test helpers
+
     func simulateSilence() { onSilence?() }
     func simulateAudio(level: Float) {
         onMeter?(AudioMeter(level: level, peak: level, bars: Array(repeating: level, count: 6)))
@@ -26,45 +25,48 @@ final class MockAudioEngine: AudioEngineProtocol {
 final class MockTranscriber: TranscriberProtocol {
     var onPartial: (@Sendable (String) -> Void)?
     var onFinal: (@Sendable (String) -> Void)?
-    
+
     var shouldFail = false
-    
-    func loadModel() async throws { if shouldFail { throw NSError(domain: "test", code: 1) } }
+    var finalText = "Final transcript"
+
+    func loadModel() async throws {
+        if shouldFail {
+            throw NSError(domain: "test", code: 1)
+        }
+    }
+
     func start() {}
-    func stop() -> String { return "Final transcript" }
+    func stop() -> String { finalText }
     func process(samples: [Float]) {}
-    
-    // Test helpers
+
     func emitFinal(_ text: String) { onFinal?(text) }
+}
+
+final class MockTextCleanupProcessor: TextCleanupProcessing, @unchecked Sendable {
+    var output: String?
+    var error: Error?
+    private(set) var inputs: [String] = []
+
+    func clean(text: String) async throws -> String {
+        inputs.append(text)
+        if let error {
+            throw error
+        }
+        return output ?? text
+    }
 }
 
 final class MockTextInserter: TextInserterProtocol {
     var insertedText: String?
     var insertionOutcome: InsertionOutcome = .accessibility
-    
+
     func insert(text: String, method: InsertionMethod) -> InsertionOutcome {
         insertedText = text
         return insertionOutcome
     }
-    func checkAccessibilityPermission() -> Bool { return true }
+
+    func checkAccessibilityPermission() -> Bool { true }
     func requestAccessibilityPermission() {}
-}
-
-final class MockHistoryStore: HistoryStoreProtocol, @unchecked Sendable {
-    private(set) var entries: [HistoryEntry] = []
-
-    func loadEntries() throws -> [HistoryEntry] {
-        entries
-    }
-
-    func save(entry: HistoryEntry) throws {
-        entries.removeAll { $0.id == entry.id }
-        entries.insert(entry, at: 0)
-    }
-
-    func update(entry: HistoryEntry) throws {
-        try save(entry: entry)
-    }
 }
 
 final class MockPermissionManager: PermissionManaging, @unchecked Sendable {
@@ -132,7 +134,6 @@ final class MockDictationController: DictationControlling, @unchecked Sendable {
     private(set) var startConfigurations: [RecordingSessionConfiguration] = []
     private(set) var stopCallCount = 0
     private(set) var discardCallCount = 0
-    private(set) var selectedOptions: [SmartModeOption] = []
 
     func loadModel() async {
         onModelLoaded?()
@@ -144,10 +145,6 @@ final class MockDictationController: DictationControlling, @unchecked Sendable {
 
     func stopRecording() {
         stopCallCount += 1
-    }
-
-    func handleSmartModeSelection(_ option: SmartModeOption) {
-        selectedOptions.append(option)
     }
 
     func discardRecording() {

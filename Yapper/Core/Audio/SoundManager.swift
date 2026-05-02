@@ -1,8 +1,7 @@
 import Foundation
 
 enum SoundEffect {
-    case recordingStart, recordingStop, meetingStart, meetingStop
-    case processingComplete, smartMenuOpen, smartOptionSelect, error
+    case recordingStart, recordingStop, processingComplete, error
 }
 
 final class SoundManager: @unchecked Sendable {
@@ -20,12 +19,10 @@ final class SoundManager: @unchecked Sendable {
             var soundPath = ""
             
             switch effect {
-            case .recordingStart, .meetingStart, .smartMenuOpen:
+            case .recordingStart:
                 soundPath = "\(self.projectDir)/start.mp3"
-            case .recordingStop, .meetingStop, .processingComplete:
+            case .recordingStop, .processingComplete:
                 soundPath = "\(self.projectDir)/success.mp3"
-            case .smartOptionSelect:
-                soundPath = self.systemSoundDir + "Pop.aiff"
             case .error:
                 soundPath = self.systemSoundDir + "Glass.aiff"
             }

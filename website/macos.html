@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Yapper macOS Demo</title>
+    <meta
+      name="description"
+      content="A polished macOS product shot for Yapper with a static desktop plate and animated product overlays."
+    />
+    <link rel="stylesheet" href="./macos.css" />
+  </head>
+  <body>
+    <main class="mac-shot" aria-label="Yapper macOS product demo">
+      <picture class="desktop-plate" aria-hidden="true">
+        <source media="(max-width: 700px)" srcset="./assets/macos-mobile-plate.png" />
+        <img src="./assets/macos-desktop-plate.png" alt="" />
+      </picture>
+
+      <button class="menu-yapper" type="button" aria-label="Yapper menu bar item">
+        <img src="./assets/yapper-macos-icon.png" alt="" />
+        <span>Yapper</span>
+      </button>
+
+      <button class="dock-yapper" id="dock-yapper" type="button" aria-label="Open Yapper">
+        <img src="./assets/yapper-macos-icon.png" alt="" />
+      </button>
+
+      <section class="yapper-capsule" id="yapper-capsule" data-state="listening" aria-label="Yapper dictation state">
+        <div class="capsule-state capsule-state--listening">
+          <div class="voice-bars" aria-hidden="true">
+            <span></span><span></span><span></span><span></span><span></span><span></span>
+          </div>
+          <span id="live-word" class="live-word">speak</span>
+          <span id="timer" class="timer">0:03</span>
+        </div>
+
+        <div class="capsule-state capsule-state--polishing">
+          <span>Polishing</span>
+          <span class="progress-track" aria-hidden="true"><span></span></span>
+        </div>
+
+        <div class="capsule-state capsule-state--options">
+          <button type="button">Original</button>
+          <button type="button" class="is-selected">Slack</button>
+          <button type="button">Email</button>
+          <button type="button">Prompt</button>
+        </div>
+      </section>
+
+      <section class="dictation-card" aria-label="Dictation example">
+        <p class="dictation-card__eyebrow">Dictating into Notes</p>
+        <h1>Speak naturally. Yapper writes the clean version.</h1>
+        <p id="dictation-text" class="dictation-card__text"></p>
+      </section>
+
+      <section class="output-card" aria-label="Formatted output example">
+        <span>Smart Option</span>
+        <p id="output-text"></p>
+      </section>
+    </main>
+
+    <script src="./macos.js"></script>
+  </body>
+</html>

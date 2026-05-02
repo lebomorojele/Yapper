@@ -114,6 +114,32 @@ final class HotkeyManagerTests: XCTestCase {
         XCTAssertEqual(context.tapController.uninstallCount, 1)
         XCTAssertEqual(context.sut.monitoringStatus, .stopped)
     }
+
+    @MainActor
+    func testFnFlagsChangedEmitsSingleTap() {
+        let context = makeSUT()
+        let expectation = expectation(description: "Single tap emitted")
+        context.sut.onGesture = { gesture in
+            if case .singleTap = gesture {
+                expectation.fulfill()
+            }
+        }
+
+        let keyDown = CGEvent(source: nil) ?? XCTFailAndReturnEvent()
+        keyDown.type = .flagsChanged
+        keyDown.flags = .maskSecondaryFn
+        keyDown.setIntegerValueField(.keyboardEventKeycode, value: 63)
+
+        let keyUp = CGEvent(source: nil) ?? XCTFailAndReturnEvent()
+        keyUp.type = .flagsChanged
+        keyUp.flags = []
+        keyUp.setIntegerValueField(.keyboardEventKeycode, value: 63)
+
+        _ = context.sut.handleEvent(type: .flagsChanged, event: keyDown)
+        _ = context.sut.handleEvent(type: .flagsChanged, event: keyUp)
+
+        waitForExpectations(timeout: 1.0)
+    }
 }
 
 private final class StatusRecorder: @unchecked Sendable {

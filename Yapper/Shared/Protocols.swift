@@ -11,7 +11,6 @@ protocol DictationControlling: AnyObject, Sendable {
     func loadModel() async
     func startRecording(configuration: RecordingSessionConfiguration)
     func stopRecording()
-    func handleSmartModeSelection(_ option: SmartModeOption)
     func discardRecording()
 }
 
@@ -36,7 +35,7 @@ protocol AudioEngineProtocol {
     var onAudio: (@Sendable ([Float]) -> Void)? { get set }
     var onSilence: (@Sendable () -> Void)? { get set }
     var onMeter: (@Sendable (AudioMeter) -> Void)? { get set }
-    
+
     func start()
     func stop()
     var silenceThreshold: TimeInterval { get set }
@@ -47,16 +46,15 @@ protocol AudioEngineProtocol {
 protocol TranscriberProtocol {
     var onPartial: (@Sendable (String) -> Void)? { get set }
     var onFinal: (@Sendable (String) -> Void)? { get set }
-    
+
     func loadModel() async throws
     func start()
     func stop() -> String
     func process(samples: [Float])
 }
 
-protocol LLMProcessorProtocol: Sendable {
-    func process(text: String, option: SmartModeOption) async throws -> String
-    func process(text: String, instruction: String) async throws -> String
+protocol TextCleanupProcessing: Sendable {
+    func clean(text: String) async throws -> String
 }
 
 protocol TextInserterProtocol {
@@ -65,15 +63,8 @@ protocol TextInserterProtocol {
     func requestAccessibilityPermission()
 }
 
-protocol HistoryStoreProtocol: Sendable {
-    func loadEntries() throws -> [HistoryEntry]
-    func save(entry: HistoryEntry) throws
-    func update(entry: HistoryEntry) throws
-}
-
 // Concrete conformances for App usage
 extension DictationController: DictationControlling {}
 extension HotkeyManager: HotkeyManaging {}
 extension PermissionManager: PermissionManaging {}
-extension LLMProcessor: LLMProcessorProtocol {}
 extension TextInserter: TextInserterProtocol {}

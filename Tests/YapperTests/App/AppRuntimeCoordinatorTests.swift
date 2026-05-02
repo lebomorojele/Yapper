@@ -7,28 +7,24 @@ final class AppRuntimeCoordinatorTests: XCTestCase {
         sut: AppRuntimeCoordinator,
         dictation: MockDictationController,
         hotkeys: MockHotkeyManager,
-        permissions: MockPermissionManager,
-        history: MockHistoryStore
+        permissions: MockPermissionManager
     ) {
         let dictation = MockDictationController()
         let hotkeys = MockHotkeyManager()
         let permissions = MockPermissionManager()
-        let history = MockHistoryStore()
         let sut = AppRuntimeCoordinator(
             dictationController: dictation,
             hotkeyManager: hotkeys,
-            permissionManager: permissions,
-            historyStore: history
+            permissionManager: permissions
         )
-        return (sut, dictation, hotkeys, permissions, history)
+        return (sut, dictation, hotkeys, permissions)
     }
 
     private func markModelReady(_ context: (
         sut: AppRuntimeCoordinator,
         dictation: MockDictationController,
         hotkeys: MockHotkeyManager,
-        permissions: MockPermissionManager,
-        history: MockHistoryStore
+        permissions: MockPermissionManager
     )) async {
         context.dictation.onModelLoaded?()
         await Task.yield()
@@ -43,6 +39,7 @@ final class AppRuntimeCoordinatorTests: XCTestCase {
         XCTAssertEqual(context.hotkeys.startCallCount, 1)
         XCTAssertEqual(context.hotkeys.permissionSnapshots.last, context.permissions.currentSnapshot)
         XCTAssertTrue(context.sut.state.modelReady)
+        XCTAssertEqual(context.sut.state.recordingPhase, .idle)
     }
 
     func testSingleTapStartsDictationSession() async {
@@ -53,92 +50,89 @@ final class AppRuntimeCoordinatorTests: XCTestCase {
         context.sut.handleGesture(.singleTap)
 
         XCTAssertEqual(context.dictation.startConfigurations.count, 1)
-        XCTAssertEqual(context.dictation.startConfigurations.first?.purpose, .dictation)
+        XCTAssertTrue(context.dictation.startConfigurations.first?.autoStopOnSilence == true)
+        XCTAssertTrue(context.dictation.startConfigurations.first?.shouldInsertText == true)
         XCTAssertEqual(context.sut.state.recordingPhase, .recording)
-        XCTAssertEqual(context.sut.state.session?.purpose, .dictation)
+        XCTAssertNotNil(context.sut.state.session)
     }
 
-    func testDoubleTapDuringDictationCancelsAndCleansUpSession() async {
+    func testSecondSingleTapStopsActiveDictation() async {
         let context = makeSUT()
         context.sut.start()
         await markModelReady(context)
         context.sut.handleGesture(.singleTap)
 
-        context.sut.handleGesture(.doubleTap)
-
-        XCTAssertEqual(context.dictation.discardCallCount, 1)
-        XCTAssertNil(context.sut.state.session)
-        XCTAssertNil(context.sut.state.recordingStartTime)
-        XCTAssertEqual(context.sut.state.recordingPhase, .idle)
-    }
-
-    func testHoldStartDuringDictationCancelsAndResetsToIdle() async {
-        let context = makeSUT()
-        context.sut.start()
-        await markModelReady(context)
         context.sut.handleGesture(.singleTap)
-
-        context.sut.handleGesture(.holdStart)
-
-        XCTAssertEqual(context.dictation.discardCallCount, 1)
-        XCTAssertEqual(context.sut.state.recordingPhase, .idle)
-        XCTAssertNil(context.sut.state.session)
-    }
-
-    func testSmartRecordingStopMovesToSelectionState() async {
-        let context = makeSUT()
-        context.sut.start()
-        await markModelReady(context)
-        context.sut.handleGesture(.doubleTap)
-
-        XCTAssertEqual(context.sut.state.recordingPhase, .recordingSmart)
-
-        context.dictation.onRecordingStopped?()
         await Task.yield()
 
-        XCTAssertEqual(context.sut.state.recordingPhase, .selectingSmartMode)
-    }
-
-    func testSelectSmartModeForwardsToDictationController() async {
-        let context = makeSUT()
-        context.sut.start()
-        await markModelReady(context)
-        context.sut.handleGesture(.doubleTap)
-        context.dictation.onRecordingStopped?()
-        await Task.yield()
-
-        context.sut.selectSmartMode(.email)
-
-        XCTAssertEqual(context.dictation.selectedOptions, [.email])
+        XCTAssertEqual(context.dictation.stopCallCount, 1)
         XCTAssertEqual(context.sut.state.recordingPhase, .processing)
     }
 
-    func testMeetingSessionFinishPersistsHistoryEntryWithoutInsertionOutcome() async {
+    func testRecordingStoppedMovesToProcessing() async {
         let context = makeSUT()
         context.sut.start()
         await markModelReady(context)
-        context.sut.handleGesture(.holdStart)
+        context.sut.handleGesture(.singleTap)
 
-        let session = context.sut.state.session
-        XCTAssertEqual(session?.purpose, .meeting)
-        guard let session else {
-            return XCTFail("Expected active meeting session")
+        context.dictation.onRecordingStopped?()
+        await Task.yield()
+
+        XCTAssertEqual(context.sut.state.recordingPhase, .processing)
+    }
+
+    func testFinishedSessionMovesToCompletedAndClearsSession() async {
+        let context = makeSUT()
+        context.sut.start()
+        await markModelReady(context)
+        context.sut.handleGesture(.singleTap)
+
+        guard let session = context.sut.state.session else {
+            return XCTFail("Expected active session")
         }
 
         context.dictation.onSessionFinished?(
             RecordingSessionResult(
                 session: session,
-                transcript: "Meeting transcript",
-                insertionOutcome: nil
+                transcript: "Dictated text",
+                insertionOutcome: .accessibility
             )
         )
         await Task.yield()
 
-        XCTAssertEqual(context.history.entries.count, 1)
-        XCTAssertEqual(context.history.entries.first?.kind, .meeting)
-        XCTAssertEqual(context.history.entries.first?.transcript, "Meeting transcript")
-        XCTAssertEqual(context.sut.state.recordingPhase, .completed(nil))
+        XCTAssertEqual(context.sut.state.recordingPhase, .completed(.accessibility))
         XCTAssertNil(context.sut.state.session)
+        XCTAssertNil(context.sut.state.recordingStartTime)
+    }
+
+    func testTapDuringProcessingQueuesImmediateRestartAfterFinish() async {
+        let context = makeSUT()
+        context.sut.start()
+        await markModelReady(context)
+        context.sut.handleGesture(.singleTap)
+
+        guard let session = context.sut.state.session else {
+            return XCTFail("Expected active session")
+        }
+
+        context.sut.handleGesture(.singleTap)
+        XCTAssertEqual(context.sut.state.recordingPhase, .processing)
+
+        context.sut.handleGesture(.singleTap)
+        await Task.yield()
+
+        context.dictation.onSessionFinished?(
+            RecordingSessionResult(
+                session: session,
+                transcript: "Dictated text",
+                insertionOutcome: .accessibility
+            )
+        )
+        await Task.yield()
+
+        XCTAssertEqual(context.dictation.startConfigurations.count, 2)
+        XCTAssertEqual(context.sut.state.recordingPhase, .recording)
+        XCTAssertNotNil(context.sut.state.session)
     }
 
     func testFailureCleansUpActiveSessionAndMovesToFailedState() async {

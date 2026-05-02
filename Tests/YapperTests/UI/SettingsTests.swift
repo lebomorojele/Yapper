@@ -4,15 +4,21 @@ import XCTest
 @MainActor
 final class SettingsTests: XCTestCase {
     func testSettingsManagerDefaults() {
-        // Reset to default for testing
-        SettingsManager.shared.update { $0.aiProvider = "OpenAI" }
         let settings = SettingsManager.shared.settings
-        XCTAssertEqual(settings.aiProvider, "OpenAI")
-        XCTAssertTrue(settings.saveTranscripts)
+        XCTAssertEqual(settings.insertionMethod, .axuiElement)
+        XCTAssertTrue(settings.cleanupEnabled)
+        XCTAssertEqual(settings.modelCleanupWordThreshold, 10)
     }
     
     func testUpdateSettings() {
-        SettingsManager.shared.update { $0.aiProvider = "Anthropic" }
-        XCTAssertEqual(SettingsManager.shared.settings.aiProvider, "Anthropic")
+        let originalSettings = SettingsManager.shared.settings
+        defer { SettingsManager.shared.settings = originalSettings }
+
+        SettingsManager.shared.update {
+            $0.cleanupEnabled = false
+            $0.modelCleanupWordThreshold = 16
+        }
+        XCTAssertFalse(SettingsManager.shared.settings.cleanupEnabled)
+        XCTAssertEqual(SettingsManager.shared.settings.modelCleanupWordThreshold, 16)
     }
 }

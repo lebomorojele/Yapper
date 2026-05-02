@@ -15,11 +15,15 @@ final class SettingsWindowController: NSWindowController {
             defer: false
         )
         window.minSize = NSSize(width: 760, height: 560)
-        window.title = "General"
+        window.title = "Settings"
         window.center()
         window.contentViewController = hostingController
         window.isReleasedWhenClosed = false
+        window.toolbar = NSToolbar(identifier: "SettingsWindowToolbar")
+        window.toolbar?.displayMode = .iconOnly
+        window.toolbar?.isVisible = true
         window.toolbarStyle = .unified
+        window.titleVisibility = .visible
         window.titlebarSeparatorStyle = .automatic
         
         super.init(window: window)

@@ -54,6 +54,8 @@ final class SystemHotkeyEventTapController: HotkeyEventTapControlling {
 }
 
 final class HotkeyManager: @unchecked Sendable {
+    private static let fnKeyCode: Int64 = 63
+
     var onGesture: (@Sendable (InputGesture) -> Void)?
     var onStatusChanged: (@Sendable (HotkeyMonitoringStatus) -> Void)?
 
@@ -148,20 +150,19 @@ final class HotkeyManager: @unchecked Sendable {
             return Unmanaged.passRetained(event)
         }
 
-        let flags = event.flags
-        let relevantFlags = flags.rawValue & 0xFFFF0000
-        let currentlyDown = (relevantFlags & CGEventFlags.maskSecondaryFn.rawValue) != 0
-        let otherFlags = (relevantFlags & ~CGEventFlags.maskSecondaryFn.rawValue) != 0
-
-        if otherFlags && currentlyDown {
+        let keyCode = event.getIntegerValueField(.keyboardEventKeycode)
+        guard keyCode == Self.fnKeyCode else {
             return Unmanaged.passRetained(event)
         }
 
+        let currentlyDown = event.flags.contains(.maskSecondaryFn)
         if currentlyDown && !fnKeyDown {
             fnKeyDown = true
             gestureInterpreter.keyDown()
             return nil
-        } else if !currentlyDown && fnKeyDown {
+        }
+
+        if !currentlyDown && fnKeyDown {
             fnKeyDown = false
             gestureInterpreter.keyUp()
             return nil

@@ -7,37 +7,43 @@ final class DictationControllerTests: XCTestCase {
         sut: DictationController,
         audio: MockAudioEngine,
         transcriber: MockTranscriber,
-        inserter: MockTextInserter,
-        llm: MockLLMProcessor
+        cleanup: MockTextCleanupProcessor,
+        inserter: MockTextInserter
     ) {
         let mockAudio = MockAudioEngine()
         let mockTranscriber = MockTranscriber()
+        let mockCleanup = MockTextCleanupProcessor()
         let mockInserter = MockTextInserter()
-        let mockLLM = MockLLMProcessor()
         let sut = DictationController(
             audioEngine: mockAudio,
             transcriber: mockTranscriber,
-            llmProcessor: mockLLM,
+            textCleanupProcessor: mockCleanup,
             textInserter: mockInserter
         )
-        return (sut, mockAudio, mockTranscriber, mockInserter, mockLLM)
+        return (sut, mockAudio, mockTranscriber, mockCleanup, mockInserter)
     }
 
     @MainActor
-    func testDefaultDictationFlowInsertsTranscript() {
+    func testDefaultDictationFlowCleansAndInsertsTranscript() {
+        let originalSettings = SettingsManager.shared.settings
+        SettingsManager.shared.update {
+            $0.cleanupEnabled = true
+            $0.modelCleanupWordThreshold = 2
+        }
+        defer { SettingsManager.shared.settings = originalSettings }
+
         let context = makeSUT()
+        context.cleanup.output = "Final transcript."
         let expectation = expectation(description: "Session finished")
 
         context.sut.onSessionFinished = { result in
-            XCTAssertEqual(result.transcript, "Final transcript")
+            XCTAssertEqual(result.transcript, "Final transcript.")
             XCTAssertEqual(result.insertionOutcome, .accessibility)
-            XCTAssertEqual(result.session.purpose, .dictation)
             expectation.fulfill()
         }
 
         context.sut.startRecording(
             configuration: RecordingSessionConfiguration(
-                purpose: .dictation,
                 autoStopOnSilence: true,
                 shouldInsertText: true
             )
@@ -47,15 +53,25 @@ final class DictationControllerTests: XCTestCase {
         context.sut.stopRecording()
 
         waitForExpectations(timeout: 1.0)
-        XCTAssertEqual(context.inserter.insertedText, "Final transcript")
+        XCTAssertEqual(context.cleanup.inputs, ["Final transcript."])
+        XCTAssertEqual(context.inserter.insertedText, "Final transcript.")
     }
 
     @MainActor
     func testSilenceStopsDefaultDictation() {
+        let originalSettings = SettingsManager.shared.settings
+        SettingsManager.shared.update {
+            $0.cleanupEnabled = true
+            $0.modelCleanupWordThreshold = 99
+        }
+        defer { SettingsManager.shared.settings = originalSettings }
+
         let context = makeSUT()
+        let expectation = expectation(description: "Session finished")
+        context.sut.onSessionFinished = { _ in expectation.fulfill() }
+
         context.sut.startRecording(
             configuration: RecordingSessionConfiguration(
-                purpose: .dictation,
                 autoStopOnSilence: true,
                 shouldInsertText: true
             )
@@ -64,78 +80,141 @@ final class DictationControllerTests: XCTestCase {
 
         context.audio.simulateSilence()
 
+        waitForExpectations(timeout: 1.0)
         XCTAssertFalse(context.audio.isRunning)
+        XCTAssertEqual(context.inserter.insertedText, "Final transcript.")
+    }
+
+    @MainActor
+    func testStartRecordingAppliesAudioSettings() {
+        let originalSettings = SettingsManager.shared.settings
+        SettingsManager.shared.update {
+            $0.silenceThreshold = 2.4
+            $0.silenceDetectionEnabled = true
+            $0.inputGain = 3.2
+        }
+        defer { SettingsManager.shared.settings = originalSettings }
+
+        let context = makeSUT()
+        context.sut.startRecording(
+            configuration: RecordingSessionConfiguration(
+                autoStopOnSilence: true,
+                shouldInsertText: true
+            )
+        )
+
+        XCTAssertEqual(context.audio.silenceThreshold, 2.4, accuracy: 0.001)
+        XCTAssertTrue(context.audio.silenceDetectionEnabled)
+        XCTAssertEqual(context.audio.inputGain, 3.2, accuracy: 0.001)
+    }
+
+    @MainActor
+    func testCleanupDisabledInsertsRawTranscript() {
+        let originalSettings = SettingsManager.shared.settings
+        SettingsManager.shared.update {
+            $0.cleanupEnabled = false
+            $0.modelCleanupWordThreshold = 0
+        }
+        defer { SettingsManager.shared.settings = originalSettings }
+
+        let context = makeSUT()
+        context.cleanup.output = "Changed text."
+        let expectation = expectation(description: "Session finished")
+        context.sut.onSessionFinished = { _ in expectation.fulfill() }
+
+        context.sut.startRecording(
+            configuration: RecordingSessionConfiguration(
+                autoStopOnSilence: true,
+                shouldInsertText: true
+            )
+        )
+        context.sut.stopRecording()
+
+        waitForExpectations(timeout: 1.0)
+        XCTAssertTrue(context.cleanup.inputs.isEmpty)
         XCTAssertEqual(context.inserter.insertedText, "Final transcript")
     }
 
     @MainActor
-    func testMeetingStyleRecordingIgnoresSilence() {
+    func testCleanupErrorFallsBackToRawTranscript() {
+        let originalSettings = SettingsManager.shared.settings
+        SettingsManager.shared.update {
+            $0.cleanupEnabled = true
+            $0.modelCleanupWordThreshold = 2
+        }
+        defer { SettingsManager.shared.settings = originalSettings }
+
         let context = makeSUT()
+        context.cleanup.error = NSError(domain: "cleanup", code: 1)
+        let expectation = expectation(description: "Session finished")
+        context.sut.onSessionFinished = { result in
+            XCTAssertEqual(result.transcript, "Final transcript.")
+            expectation.fulfill()
+        }
+
         context.sut.startRecording(
             configuration: RecordingSessionConfiguration(
-                purpose: .meeting,
-                autoStopOnSilence: false,
-                shouldInsertText: false
+                autoStopOnSilence: true,
+                shouldInsertText: true
             )
         )
-        XCTAssertFalse(context.audio.silenceDetectionEnabled)
+        context.sut.stopRecording()
 
-        context.audio.simulateSilence()
-
-        XCTAssertTrue(context.audio.isRunning)
-        XCTAssertNil(context.inserter.insertedText)
+        waitForExpectations(timeout: 1.0)
+        XCTAssertEqual(context.inserter.insertedText, "Final transcript.")
     }
 
     @MainActor
-    func testMeetingRecordingFinishesWithoutInsertion() {
-        let context = makeSUT()
-        let expectation = expectation(description: "Meeting session finished")
+    func testShortTranscriptUsesFastPathOnly() {
+        let originalSettings = SettingsManager.shared.settings
+        SettingsManager.shared.update {
+            $0.cleanupEnabled = true
+            $0.modelCleanupWordThreshold = 99
+        }
+        defer { SettingsManager.shared.settings = originalSettings }
 
+        let context = makeSUT()
+        context.transcriber.finalText = "hello there"
+        let expectation = expectation(description: "Session finished")
         context.sut.onSessionFinished = { result in
-            XCTAssertEqual(result.session.purpose, .meeting)
-            XCTAssertEqual(result.transcript, "Final transcript")
+            XCTAssertEqual(result.transcript, "Hello there.")
+            expectation.fulfill()
+        }
+
+        context.sut.startRecording(
+            configuration: RecordingSessionConfiguration(
+                autoStopOnSilence: true,
+                shouldInsertText: true
+            )
+        )
+        context.sut.stopRecording()
+
+        waitForExpectations(timeout: 1.0)
+        XCTAssertTrue(context.cleanup.inputs.isEmpty)
+        XCTAssertEqual(context.inserter.insertedText, "Hello there.")
+    }
+
+    @MainActor
+    func testEmptyTranscriptDoesNotInsert() {
+        let context = makeSUT()
+        context.transcriber.finalText = "   "
+        let expectation = expectation(description: "Session finished")
+        context.sut.onSessionFinished = { result in
+            XCTAssertEqual(result.transcript, "")
             XCTAssertNil(result.insertionOutcome)
             expectation.fulfill()
         }
 
         context.sut.startRecording(
             configuration: RecordingSessionConfiguration(
-                purpose: .meeting,
-                autoStopOnSilence: false,
-                shouldInsertText: false
+                autoStopOnSilence: true,
+                shouldInsertText: true
             )
         )
-
         context.sut.stopRecording()
 
         waitForExpectations(timeout: 1.0)
         XCTAssertNil(context.inserter.insertedText)
-    }
-
-    @MainActor
-    func testSmartModeCancelInsertsRawTranscript() {
-        let context = makeSUT()
-        let expectation = expectation(description: "Smart cancel finishes")
-
-        context.sut.onSessionFinished = { result in
-            XCTAssertEqual(result.session.purpose, .smart)
-            XCTAssertEqual(result.transcript, "Final transcript")
-            XCTAssertEqual(result.insertionOutcome, .accessibility)
-            expectation.fulfill()
-        }
-
-        context.sut.startRecording(
-            configuration: RecordingSessionConfiguration(
-                purpose: .smart,
-                autoStopOnSilence: true,
-                shouldInsertText: false
-            )
-        )
-        context.sut.stopRecording()
-        context.sut.handleSmartModeSelection(.cancel)
-
-        waitForExpectations(timeout: 1.0)
-        XCTAssertEqual(context.inserter.insertedText, "Final transcript")
     }
 
     @MainActor
@@ -149,7 +228,6 @@ final class DictationControllerTests: XCTestCase {
 
         context.sut.startRecording(
             configuration: RecordingSessionConfiguration(
-                purpose: .dictation,
                 autoStopOnSilence: true,
                 shouldInsertText: true
             )

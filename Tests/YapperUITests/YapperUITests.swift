@@ -6,17 +6,20 @@ final class YapperUITests: XCTestCase {
 
     override func setUpWithError() throws {
         continueAfterFailure = false
+    }
+
+    func testSettingsWindowOpensAndSwitchesPanes() throws {
+        app.launchEnvironment["YAPPER_UI_TEST_MODE"] = "1"
+        app.launchEnvironment["YAPPER_OPEN_SETTINGS_ON_LAUNCH"] = "1"
         app.launch()
-    }
 
-    func testSettingsWindowOpens() throws {
-        // Simulate clicking preferences (if we had a menu item, but we'll test the window controller directly via app state)
-        // Since we can't easily click menu items in a background app, we'll verify the app launches.
-        XCTAssertTrue(app.exists)
-    }
+        XCTAssertTrue(app.otherElements["settings.root"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.otherElements["settings.pane.general"].exists)
 
-    func testSettingsUIElements() throws {
-        // This is a placeholder for testing the settings window when triggered
-        // In a real scenario, we'd trigger the window via a shortcut or a menu bar helper
+        app.staticTexts["Audio"].click()
+        XCTAssertTrue(app.otherElements["settings.pane.audio"].waitForExistence(timeout: 2))
+
+        app.staticTexts["Keyboard"].click()
+        XCTAssertTrue(app.otherElements["settings.pane.keyboard"].waitForExistence(timeout: 2))
     }
 }

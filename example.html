@@ -1,0 +1,596 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Yapper Pebble Preview</title>
+    <style>
+      * {
+        box-sizing: border-box;
+      }
+
+      html,
+      body {
+        margin: 0;
+        width: 100%;
+        height: 100%;
+        overflow: hidden;
+      }
+
+      body {
+        min-height: 100dvh;
+        font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", sans-serif;
+        color: #0e1116;
+        background: #69b8e8 url("./assets/tahoe-wallpaper.jpg") center / cover no-repeat fixed;
+      }
+
+      .preview-page {
+        width: 100vw;
+        height: 100dvh;
+        padding: 50px 20px 96px;
+        display: grid;
+        grid-template-rows: auto 1fr auto;
+        justify-items: center;
+        gap: 0;
+      }
+
+      .menu-leading,
+      .menu-trailing {
+        position: fixed;
+        top: 0;
+        z-index: 3;
+        height: 24px;
+        width: auto;
+        display: block;
+        pointer-events: none;
+        user-select: none;
+      }
+
+      .menu-leading {
+        left: 0;
+      }
+
+      .menu-leading--mobile {
+        display: none;
+      }
+
+      .menu-trailing {
+        right: 0;
+      }
+
+      .dock-shell {
+        position: fixed;
+        left: 50%;
+        bottom: 5px;
+        z-index: 2;
+        width: 354px;
+        max-width: calc(100vw - 20px);
+        aspect-ratio: 354 / 74;
+        transform: translateX(-50%);
+        pointer-events: none;
+        user-select: none;
+      }
+
+      .dock {
+        width: 100%;
+        height: 100%;
+        display: block;
+      }
+
+      .dock-yapper-icon {
+        position: absolute;
+        left: 104px;
+        top: 18.5px;
+        width: 36px;
+        height: 36px;
+        display: block;
+        border-radius: 10px;
+        animation: dock-bounce 1.8s cubic-bezier(0.2, 0.8, 0.2, 1) infinite;
+        filter: drop-shadow(0 5px 8px rgba(0, 0, 0, 0.18));
+        transform-origin: 50% 100%;
+      }
+
+      .preview-stage {
+        width: min(460px, calc(100vw - 32px));
+        height: 32px;
+        display: grid;
+        place-items: center;
+        padding: 0;
+      }
+
+      .mode-controls {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: center;
+        align-self: end;
+        gap: 4px;
+        margin-bottom: 18px;
+        padding: 5px;
+        border-radius: 999px;
+        background:
+          linear-gradient(180deg, rgba(255, 255, 255, 0.72), rgba(255, 255, 255, 0.22)),
+          rgba(255, 255, 255, 0.46);
+        border: 1px solid rgba(255, 255, 255, 0.62);
+        box-shadow:
+          inset 0 1px 1px rgba(255, 255, 255, 0.74),
+          0 14px 32px rgba(37, 68, 108, 0.12);
+        backdrop-filter: blur(22px) saturate(1.24);
+        -webkit-backdrop-filter: blur(22px) saturate(1.24);
+      }
+
+      .mode-controls button {
+        height: 28px;
+        padding: 0 11px;
+        border: 0;
+        border-radius: 999px;
+        background: transparent;
+        color: rgba(14, 17, 22, 0.64);
+        font: 500 13px/1 -apple-system, BlinkMacSystemFont, "SF Pro Text", sans-serif;
+        cursor: pointer;
+      }
+
+      .mode-controls button.is-active {
+        color: #fff;
+        background: #0e1116;
+      }
+
+      .yapper-panel {
+        width: min(460px, 100%);
+        height: 32px;
+        display: grid;
+        place-items: center;
+        pointer-events: none;
+      }
+
+      .yapper-pebble {
+        --pebble-width: 52px;
+        width: min(var(--pebble-width), 100%);
+        height: 32px;
+        position: relative;
+        overflow: hidden;
+        border-radius: 999px;
+        pointer-events: auto;
+        color: rgba(0, 0, 0, 0.7);
+        transition: width 180ms ease-out;
+        background:
+          linear-gradient(
+            180deg,
+            rgba(255, 255, 255, 0.72),
+            rgba(255, 255, 255, 0.16)
+          ),
+          rgba(255, 255, 255, 0.58);
+        backdrop-filter: blur(28px) saturate(1.35);
+        -webkit-backdrop-filter: blur(28px) saturate(1.35);
+        box-shadow:
+          inset 0 0 0 1px rgba(0, 0, 0, 0.05),
+          inset 0 1px 1px rgba(255, 255, 255, 0.82),
+          0 2px 4px rgba(0, 0, 0, 0.12);
+      }
+
+      .yapper-pebble::before {
+        content: "";
+        position: absolute;
+        inset: 1px 8px auto;
+        height: 13px;
+        border-radius: 999px;
+        border-top: 1.2px solid rgba(255, 255, 255, 0.82);
+        pointer-events: none;
+      }
+
+      .yapper-pebble[data-mode="listening"],
+      .yapper-pebble[data-mode="thinking"] {
+        --pebble-width: 52px;
+        background:
+          linear-gradient(
+            180deg,
+            rgba(255, 255, 255, 0.72),
+            rgba(255, 255, 255, 0.16)
+          ),
+          rgba(221, 247, 255, 0.18);
+      }
+
+      .yapper-pebble[data-mode="speaking"] {
+        --pebble-width: 96px;
+      }
+
+      .yapper-pebble[data-mode="select"] {
+        --pebble-width: 286px;
+      }
+
+      .yapper-state {
+        position: absolute;
+        inset: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        opacity: 0;
+        transform: translateY(4px);
+        transition: opacity 140ms ease, transform 160ms ease;
+      }
+
+      .yapper-pebble[data-mode="listening"] .yapper-state-dots,
+      .yapper-pebble[data-mode="thinking"] .yapper-state-dots,
+      .yapper-pebble[data-mode="speaking"] .yapper-state-transcript,
+      .yapper-pebble[data-mode="select"] .yapper-state-options {
+        opacity: 1;
+        transform: translateY(0);
+      }
+
+      .yapper-state-dots {
+        gap: 4px;
+      }
+
+      .yapper-state-dots span {
+        width: 4px;
+        height: 4px;
+        border-radius: 50%;
+        background: rgba(0, 0, 0, 0.7);
+      }
+
+      .yapper-pebble[data-mode="listening"] .yapper-state-dots span,
+      .yapper-pebble[data-mode="thinking"] .yapper-state-dots span {
+        animation: yapper-dot 700ms ease-in-out infinite;
+      }
+
+      .yapper-state-dots span:nth-child(2) {
+        animation-delay: 120ms;
+      }
+
+      .yapper-state-dots span:nth-child(3) {
+        animation-delay: 240ms;
+      }
+
+      .yapper-state-transcript {
+        inset: 0 12px;
+        gap: 0;
+        padding: 0;
+        position: absolute;
+        font: 400 12px/1 -apple-system, BlinkMacSystemFont, "SF Pro Text", sans-serif;
+        letter-spacing: 0;
+        white-space: nowrap;
+        overflow: hidden;
+        justify-content: center;
+      }
+
+      .transcript-token {
+        flex: 0 0 auto;
+        will-change: transform, opacity;
+        transition:
+          transform 650ms ease,
+          opacity 650ms ease;
+      }
+
+      .transcript-token.is-entering {
+        opacity: 0;
+        transform: translateY(3px);
+      }
+
+      .transcript-exit-token {
+        position: absolute;
+        color: rgba(0, 0, 0, 0.70);
+        pointer-events: none;
+        will-change: transform, opacity;
+        transition:
+          transform 650ms ease,
+          opacity 650ms ease;
+      }
+
+      .yapper-state-options {
+        gap: 4px;
+        padding: 4px;
+      }
+
+      .yapper-state-options button {
+        height: 24px;
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        padding: 0 8px 0 4px;
+        border: 0;
+        border-radius: 999px;
+        background: transparent;
+        color: rgba(0, 0, 0, 0.6);
+        font: 400 12px/1 -apple-system, BlinkMacSystemFont, "SF Pro Text", sans-serif;
+        letter-spacing: 0;
+        cursor: pointer;
+      }
+
+      .yapper-state-options button.is-selected {
+        background: #000;
+        color: #fff;
+      }
+
+      .yapper-state-options kbd {
+        width: 18px;
+        height: 18px;
+        display: grid;
+        place-items: center;
+        border-radius: 50%;
+        background: rgba(0, 0, 0, 0.06);
+        font: inherit;
+        font-size: 10px;
+      }
+
+      .yapper-state-options button.is-selected kbd {
+        background: rgba(255, 255, 255, 0.18);
+      }
+
+      @keyframes yapper-dot {
+        0%, 80%, 100% {
+          opacity: 0.4;
+          transform: translateY(0);
+        }
+
+        40% {
+          opacity: 1;
+          transform: translateY(-3px);
+        }
+      }
+
+      @keyframes dock-bounce {
+        0%, 38%, 100% {
+          transform: translateY(0) scale(1);
+        }
+
+        12% {
+          transform: translateY(-18px) scale(1.04);
+        }
+
+        24% {
+          transform: translateY(0) scale(1);
+        }
+      }
+
+      @media (max-width: 460px) {
+        .preview-page {
+          padding: 39px 20px 96px;
+        }
+
+        .menu-leading--desktop,
+        .menu-trailing {
+          display: none;
+        }
+
+        .menu-leading--mobile {
+          display: block;
+        }
+
+        .dock-shell {
+          width: min(354px, calc(100vw - 20px));
+        }
+
+        .dock-yapper-icon {
+          left: 29.4%;
+          top: 25%;
+          width: 10.2%;
+          height: auto;
+        }
+
+        .mode-controls {
+          border-radius: 20px;
+          width: min(350px, calc(100vw - 40px));
+        }
+
+        .mode-controls button {
+          flex: 1 1 42%;
+        }
+
+        .yapper-pebble[data-mode="select"] {
+          --pebble-width: 100%;
+        }
+
+        .yapper-state-options button {
+          padding-right: 6px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <img class="menu-leading menu-leading--desktop" src="./assets/menu-leading-desktop.svg" alt="" aria-hidden="true" />
+    <img class="menu-leading menu-leading--mobile" src="./assets/menu-leading-mobile.svg" alt="" aria-hidden="true" />
+    <img class="menu-trailing" src="./assets/menu-trailing-desktop.svg" alt="" aria-hidden="true" />
+
+    <main class="preview-page">
+      <section class="preview-stage" aria-label="Yapper pebble preview">
+        <div class="yapper-panel">
+          <div id="yapper-pebble" class="yapper-pebble" data-mode="listening">
+            <div class="yapper-state yapper-state-dots" aria-label="Yapper listening">
+              <span></span><span></span><span></span>
+            </div>
+
+            <div id="transcript-strip" class="yapper-state yapper-state-transcript"></div>
+
+            <div class="yapper-state yapper-state-options">
+              <button><kbd>1</kbd>Email</button>
+              <button class="is-selected"><kbd>2</kbd>Slack</button>
+              <button><kbd>3</kbd>Clean</button>
+              <button><kbd>4</kbd>Prompt</button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <nav class="mode-controls" aria-label="Preview mode controls">
+        <button class="is-active" type="button" data-mode="listening">Listening</button>
+        <button type="button" data-mode="thinking">Thinking</button>
+        <button type="button" data-mode="speaking">Speaking</button>
+        <button type="button" data-mode="select">Options</button>
+      </nav>
+    </main>
+
+    <div class="dock-shell" aria-hidden="true">
+      <img class="dock" src="./assets/dock.svg" alt="" />
+      <img class="dock-yapper-icon" src="./assets/dock-icon.png" alt="" />
+    </div>
+
+    <script>
+      const pebble = document.getElementById("yapper-pebble");
+      const transcriptStrip = document.getElementById("transcript-strip");
+      const modeButtons = [...document.querySelectorAll(".mode-controls [data-mode]")];
+      const leboMessages = [
+        "I just said make it sound normal and Yapper actually understood the assignment.",
+        "It cleaned up my ramble into a message I would proudly send to a client.",
+        "Exactly. Locally. Quietly. No dramatic cloud ritual.",
+        "Double tap Fn and it gives me Slack, Email, Clean, or Prompt mode."
+      ];
+
+      let speakingTimer = 0;
+      let speakingLineIndex = 0;
+      let speakingWordIndex = 0;
+      let spokenTokens = [];
+      let globalTokenId = 0;
+
+      const measureCanvas = document.createElement("canvas");
+      const measureContext = measureCanvas.getContext("2d");
+
+      function tokenSetWidth(tokens) {
+        const style = window.getComputedStyle(transcriptStrip);
+        measureContext.font = style.font;
+        const gap = 5;
+        return tokens.reduce((total, token, index) => {
+          return total + measureContext.measureText(token.text).width + (index > 0 ? gap : 0);
+        }, 0);
+      }
+
+      function visibleTokensFrom(tokens) {
+        return tokens.slice(-1);
+      }
+
+      function createToken(token) {
+        const element = document.createElement("span");
+        element.className = "transcript-token is-entering";
+        element.dataset.tokenId = String(token.id);
+        element.textContent = token.text;
+        return element;
+      }
+
+      function animateRemovedToken(element, oldRect, parentRect) {
+        const ghost = element.cloneNode(true);
+        ghost.className = "transcript-exit-token";
+        ghost.style.left = `${oldRect.left - parentRect.left}px`;
+        ghost.style.top = `${oldRect.top - parentRect.top}px`;
+        ghost.style.opacity = "1";
+        ghost.style.transform = "translateX(0)";
+        transcriptStrip.appendChild(ghost);
+
+        requestAnimationFrame(() => {
+          ghost.style.opacity = "0";
+          ghost.style.transform = "translateY(-3px)";
+        });
+
+        window.setTimeout(() => ghost.remove(), 680);
+      }
+
+      function renderTranscript(nextTokens) {
+        const activeElements = [...transcriptStrip.querySelectorAll(".transcript-token")];
+        const oldRects = new Map(
+          activeElements.map((element) => [element.dataset.tokenId, element.getBoundingClientRect()])
+        );
+        const parentRect = transcriptStrip.getBoundingClientRect();
+        const nextIds = new Set(nextTokens.map((token) => String(token.id)));
+
+        activeElements.forEach((element) => {
+          if (!nextIds.has(element.dataset.tokenId)) {
+            const oldRect = oldRects.get(element.dataset.tokenId);
+            element.remove();
+            animateRemovedToken(element, oldRect, parentRect);
+          }
+        });
+
+        nextTokens.forEach((token) => {
+          const id = String(token.id);
+          let element = transcriptStrip.querySelector(`.transcript-token[data-token-id="${id}"]`);
+
+          if (!element) {
+            element = createToken(token);
+          }
+
+          transcriptStrip.appendChild(element);
+        });
+
+        const nextElements = [...transcriptStrip.querySelectorAll(".transcript-token")];
+        const newRects = new Map(
+          nextElements.map((element) => [element.dataset.tokenId, element.getBoundingClientRect()])
+        );
+
+        nextElements.forEach((element) => {
+          const oldRect = oldRects.get(element.dataset.tokenId);
+          const newRect = newRects.get(element.dataset.tokenId);
+
+          if (oldRect && newRect) {
+            const deltaX = oldRect.left - newRect.left;
+            element.style.transition = "none";
+            element.style.transform = `translateX(${deltaX}px)`;
+            element.style.opacity = "1";
+
+            requestAnimationFrame(() => {
+              element.style.transition = "";
+              element.style.transform = "translateX(0)";
+            });
+            return;
+          }
+
+          requestAnimationFrame(() => {
+            element.classList.remove("is-entering");
+          });
+        });
+      }
+
+      function stopSpeakingAnimation() {
+        window.clearTimeout(speakingTimer);
+      }
+
+      function stepSpeakingAnimation() {
+        stopSpeakingAnimation();
+
+        if (pebble.dataset.mode !== "speaking") {
+          return;
+        }
+
+        const words = leboMessages[speakingLineIndex].split(/\s+/);
+        spokenTokens.push({
+          id: globalTokenId,
+          text: words[speakingWordIndex]
+        });
+        globalTokenId += 1;
+        renderTranscript(visibleTokensFrom(spokenTokens));
+
+        speakingWordIndex += 1;
+
+        if (speakingWordIndex >= words.length) {
+          speakingLineIndex = (speakingLineIndex + 1) % leboMessages.length;
+          speakingWordIndex = 0;
+          speakingTimer = window.setTimeout(stepSpeakingAnimation, 1050);
+          return;
+        }
+
+        speakingTimer = window.setTimeout(stepSpeakingAnimation, 650);
+      }
+
+      function startSpeakingAnimation() {
+        stopSpeakingAnimation();
+        transcriptStrip.innerHTML = "";
+        spokenTokens = [];
+        speakingWordIndex = 0;
+        speakingTimer = window.setTimeout(stepSpeakingAnimation, 180);
+      }
+
+      modeButtons.forEach((button) => {
+        button.addEventListener("click", () => {
+          pebble.dataset.mode = button.dataset.mode;
+          modeButtons.forEach((item) => item.classList.toggle("is-active", item === button));
+
+          if (button.dataset.mode === "speaking") {
+            startSpeakingAnimation();
+          } else {
+            stopSpeakingAnimation();
+          }
+        });
+      });
+
+      renderTranscript(visibleTokensFrom(
+        ["Yapper"].map((text, index) => ({ id: index, text }))
+      ));
+    </script>
+  </body>
+</html>

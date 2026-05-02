@@ -20,7 +20,12 @@ let package = Package(
             path: "Yapper",
             exclude: [
                 "Support/Info.plist",
-                "Assets.xcassets"
+                "Support/Yapper.entitlements"
+            ],
+            resources: [
+                .process("Assets.xcassets"),
+                .copy("LocalInference"),
+                .copy("MenuBarResources")
             ]
         ),
         .testTarget(

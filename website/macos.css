@@ -1,0 +1,344 @@
+:root {
+  --shadow: 0 22px 70px rgba(8, 32, 72, 0.25);
+  --panel: rgba(255, 255, 255, 0.64);
+  --line: rgba(24, 36, 54, 0.1);
+  --blue: #2f8cff;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  overflow: hidden;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", sans-serif;
+  color: #0b1220;
+  background: #68b6e8;
+}
+
+button {
+  border: 0;
+  color: inherit;
+  font: inherit;
+}
+
+.mac-shot {
+  position: relative;
+  width: 100vw;
+  height: 100dvh;
+  overflow: hidden;
+  isolation: isolate;
+}
+
+.desktop-plate {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+}
+
+.desktop-plate img {
+  width: 100%;
+  height: 100%;
+  display: block;
+  object-fit: cover;
+}
+
+.menu-yapper {
+  position: absolute;
+  z-index: 5;
+  top: 4px;
+  right: 296px;
+  height: 20px;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 0 7px 0 4px;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.08);
+  color: #050a12;
+  font-size: 13px;
+  font-weight: 650;
+  cursor: pointer;
+  opacity: 0;
+}
+
+.menu-yapper img {
+  width: 16px;
+  height: 16px;
+  border-radius: 4px;
+}
+
+.menu-yapper:hover {
+  background: rgba(255, 255, 255, 0.22);
+}
+
+.dock-yapper {
+  position: absolute;
+  z-index: 7;
+  left: calc(50% - 86px);
+  bottom: 26px;
+  width: 46px;
+  height: 46px;
+  padding: 0;
+  border-radius: 12px;
+  background: transparent;
+  cursor: pointer;
+  animation: dock-bounce 2.2s cubic-bezier(0.2, 0.8, 0.2, 1) infinite;
+}
+
+.dock-yapper img {
+  width: 100%;
+  height: 100%;
+  display: block;
+  border-radius: 12px;
+}
+
+.yapper-capsule {
+  position: absolute;
+  z-index: 8;
+  top: 72px;
+  left: 50%;
+  width: 318px;
+  height: 40px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: rgba(8, 10, 13, 0.93);
+  color: #fff;
+  box-shadow: 0 18px 54px rgba(0, 0, 0, 0.22);
+  transform: translateX(-50%);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+}
+
+.capsule-state {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 12px;
+  opacity: 0;
+  transform: translateY(6px);
+  transition: opacity 180ms ease, transform 220ms ease;
+}
+
+.yapper-capsule[data-state="listening"] .capsule-state--listening,
+.yapper-capsule[data-state="polishing"] .capsule-state--polishing,
+.yapper-capsule[data-state="options"] .capsule-state--options {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.voice-bars {
+  width: 44px;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.voice-bars span {
+  width: 3px;
+  border-radius: 999px;
+  background: #ff453a;
+  animation: voice-bar 820ms ease-in-out infinite;
+}
+
+.voice-bars span:nth-child(1) { height: 10px; animation-delay: 0ms; }
+.voice-bars span:nth-child(2) { height: 18px; animation-delay: 70ms; }
+.voice-bars span:nth-child(3) { height: 13px; animation-delay: 140ms; }
+.voice-bars span:nth-child(4) { height: 22px; animation-delay: 210ms; }
+.voice-bars span:nth-child(5) { height: 15px; animation-delay: 280ms; }
+.voice-bars span:nth-child(6) { height: 9px; animation-delay: 350ms; opacity: 0.55; }
+
+.live-word {
+  flex: 1;
+  min-width: 0;
+  color: rgba(255, 255, 255, 0.74);
+  font-size: 14px;
+  text-align: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.timer {
+  width: 38px;
+  color: #ff453a;
+  font-size: 14px;
+  font-weight: 650;
+  text-align: right;
+}
+
+.capsule-state--polishing {
+  justify-content: space-between;
+  padding: 0 16px;
+  color: rgba(255, 255, 255, 0.9);
+  font-size: 14px;
+}
+
+.progress-track {
+  width: 50px;
+  height: 6px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.24);
+}
+
+.progress-track span {
+  display: block;
+  width: 22px;
+  height: 100%;
+  border-radius: inherit;
+  background: rgba(255, 255, 255, 0.88);
+  animation: processing 920ms ease-in-out infinite;
+}
+
+.capsule-state--options {
+  justify-content: center;
+  gap: 5px;
+  padding: 5px;
+}
+
+.capsule-state--options button {
+  height: 30px;
+  padding: 0 11px;
+  border-radius: 999px;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.68);
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.capsule-state--options button.is-selected {
+  color: #0b0d11;
+  background: #fff;
+}
+
+.dictation-card,
+.output-card {
+  position: absolute;
+  z-index: 4;
+  border: 1px solid rgba(255, 255, 255, 0.44);
+  background: var(--panel);
+  box-shadow: var(--shadow);
+  backdrop-filter: blur(28px) saturate(1.2);
+  -webkit-backdrop-filter: blur(28px) saturate(1.2);
+}
+
+.dictation-card {
+  left: 8vw;
+  top: 18vh;
+  width: min(430px, 34vw);
+  min-height: 250px;
+  padding: 28px 30px 30px;
+  border-radius: 18px;
+}
+
+.dictation-card__eyebrow {
+  margin: 0 0 14px;
+  color: rgba(9, 20, 36, 0.52);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.dictation-card h1 {
+  margin: 0 0 18px;
+  font-size: clamp(28px, 3vw, 46px);
+  line-height: 1.02;
+  letter-spacing: 0;
+}
+
+.dictation-card__text {
+  min-height: 78px;
+  margin: 0;
+  color: rgba(9, 20, 36, 0.72);
+  font-size: 17px;
+  line-height: 1.5;
+}
+
+.output-card {
+  right: 9vw;
+  bottom: 18vh;
+  width: 340px;
+  padding: 16px 18px;
+  border-radius: 16px;
+}
+
+.output-card span {
+  display: block;
+  margin-bottom: 8px;
+  color: rgba(9, 20, 36, 0.48);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.output-card p {
+  min-height: 58px;
+  margin: 0;
+  color: rgba(9, 20, 36, 0.78);
+  font-size: 15px;
+  line-height: 1.42;
+}
+
+@keyframes dock-bounce {
+  0%, 40%, 100% { transform: translateY(0); }
+  12% { transform: translateY(-20px); }
+  24% { transform: translateY(0); }
+}
+
+@keyframes voice-bar {
+  0%, 100% { transform: scaleY(0.72); }
+  50% { transform: scaleY(1.24); }
+}
+
+@keyframes processing {
+  0%, 100% { transform: translateX(0); width: 20px; }
+  50% { transform: translateX(24px); width: 26px; }
+}
+
+@media (max-width: 900px) {
+  .menu-yapper {
+    display: none;
+  }
+
+  .dock-yapper {
+    left: 33%;
+    bottom: 17px;
+    width: 48px;
+    height: 48px;
+  }
+
+  .yapper-capsule {
+    top: 74px;
+    width: min(318px, calc(100vw - 28px));
+  }
+
+  .dictation-card {
+    left: 18px;
+    right: 18px;
+    top: 18vh;
+    width: auto;
+    min-height: 0;
+    padding: 22px;
+  }
+
+  .dictation-card h1 {
+    font-size: 31px;
+  }
+
+  .output-card {
+    left: 24px;
+    right: 24px;
+    bottom: 154px;
+    width: auto;
+  }
+}

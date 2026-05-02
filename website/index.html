@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Yapper Ubuntu Demo</title>
+    <meta
+      name="description"
+      content="A simplified Ubuntu-style desktop simulation for Yapper with a looping install terminal and a realistic mocked floating panel."
+    />
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <div class="ubuntu-shell">
+      <video
+        class="wallpaper-video"
+        autoplay
+        muted
+        loop
+        playsinline
+        preload="auto"
+        aria-hidden="true"
+      >
+        <source src="./assets/ascii-art-video.mp4" type="video/mp4" />
+      </video>
+      <div class="wallpaper-tint" aria-hidden="true"></div>
+
+      <header class="top-bar" aria-label="Ubuntu top bar">
+        <div class="top-bar__left">
+          <button class="top-bar__item">Activities</button>
+          <button class="top-bar__item top-bar__item--current" id="active-app-label">
+            Terminal
+          </button>
+        </div>
+        <div class="top-bar__center">
+          <span id="clock">Apr 20 11:22 PM</span>
+        </div>
+        <div class="top-bar__right" aria-label="System status">
+          <span class="status-icon">⌁</span>
+          <span class="status-icon">◔</span>
+          <span class="status-icon">⏻</span>
+        </div>
+      </header>
+
+      <aside class="dock" aria-label="Ubuntu dock">
+        <button class="dock__item dock__item--terminal is-running" data-open-window="terminal" aria-label="Terminal">
+          <span class="dock__glyph">〉_</span>
+        </button>
+        <button class="dock__item dock__item--textpad is-running" data-open-window="textpad" aria-label="Text Pad">
+          <span class="dock__glyph">✎</span>
+        </button>
+        <button class="dock__item dock__item--yapper" data-open-window="credits" aria-label="Yapper">
+          <img class="dock__logo" src="./assets/yapper-logo.png" alt="Yapper logo" />
+        </button>
+        <button class="dock__apps" aria-label="Show applications">
+          <span></span>
+          <span></span>
+          <span></span>
+          <span></span>
+          <span></span>
+          <span></span>
+          <span></span>
+          <span></span>
+          <span></span>
+        </button>
+      </aside>
+
+      <main class="desktop" aria-label="Ubuntu desktop">
+        <section
+          class="window window--terminal is-active"
+          data-window="terminal"
+          data-window-label="Terminal"
+          data-initial-left="84"
+          data-initial-top="108"
+          data-mobile-left="12"
+          data-mobile-top="112"
+          aria-label="Terminal"
+        >
+          <div class="window__frame">
+            <div class="window__chrome" data-drag-handle>
+              <div class="window__title">visitor@how-to-install-yapper: ~</div>
+              <div class="window__actions">
+                <button class="window__control" data-window-action="minimize" data-target="terminal" aria-label="Minimize terminal">−</button>
+                <button class="window__control" data-window-action="close" data-target="terminal" aria-label="Close terminal">×</button>
+              </div>
+            </div>
+            <div class="terminal">
+              <div class="terminal__line terminal__line--prompt">
+                <span class="terminal__prompt-prefix">
+                  <span class="terminal__user">visitor@yapper-demo</span>:<span class="terminal__path">~</span>$&nbsp;
+                </span>
+                <span id="terminal-command"></span><span class="terminal__cursor"></span>
+              </div>
+              <div id="terminal-output" class="terminal__output" aria-live="polite"></div>
+            </div>
+            <div class="window__resize-handle" data-resize-handle aria-hidden="true"></div>
+          </div>
+        </section>
+
+        <section
+          class="window window--textpad is-active"
+          data-window="textpad"
+          data-window-label="Text Pad"
+          data-initial-left="610"
+          data-initial-top="172"
+          data-mobile-left="12"
+          data-mobile-top="396"
+          aria-label="Text Pad"
+        >
+          <div class="window__frame">
+            <div class="window__chrome window__chrome--light" data-drag-handle>
+              <div class="window__title">Recording_Output.txt</div>
+              <div class="window__actions">
+                <button class="window__control window__control--light" data-window-action="minimize" data-target="textpad" aria-label="Minimize text pad">−</button>
+                <button class="window__control window__control--light" data-window-action="close" data-target="textpad" aria-label="Close text pad">×</button>
+              </div>
+            </div>
+            <div class="textpad">
+              <div class="textpad__toolbar">
+                <span>output.txt</span>
+                <span class="textpad__status">UTF-8</span>
+              </div>
+              <div id="textpad-output" class="textpad__page">
+                <p>Yapper output simulation ready.</p>
+                <p>Waiting for invocation...</p>
+              </div>
+            </div>
+            <div class="window__resize-handle window__resize-handle--light" data-resize-handle aria-hidden="true"></div>
+          </div>
+        </section>
+
+        <section class="yapper-overlay" aria-label="Mocked Yapper invocation">
+          <div id="yapper-pill" class="tts-pebble" data-mode="thinking">
+            <div class="dots" aria-hidden="true">
+              <span></span>
+              <span></span>
+              <span></span>
+            </div>
+
+            <span id="yapper-live-text" class="spoken-word">Drafting</span>
+
+            <div class="select-options" aria-label="Rewrite options">
+              <button data-key="1"><kbd>1</kbd>Email</button>
+              <button data-key="2" class="active"><kbd>2</kbd>Slack</button>
+              <button data-key="3"><kbd>3</kbd>Clean</button>
+              <button data-key="4"><kbd>4</kbd>Prompt</button>
+            </div>
+          </div>
+        </section>
+
+        <section
+          class="window window--credits"
+          data-window="credits"
+          data-window-label="Yapper"
+          data-initial-left="760"
+          data-initial-top="116"
+          data-mobile-left="24"
+          data-mobile-top="180"
+          aria-label="Yapper credits"
+        >
+          <div class="window__frame">
+            <div class="window__chrome" data-drag-handle>
+              <div class="window__title">Yapper</div>
+              <div class="window__actions">
+                <button class="window__control" data-window-action="minimize" data-target="credits" aria-label="Minimize credits">−</button>
+                <button class="window__control" data-window-action="close" data-target="credits" aria-label="Close credits">×</button>
+              </div>
+            </div>
+            <div class="credits">
+              <button class="credits__logo" id="credits-logo-button" type="button" aria-label="Copy brew install command">
+                <img class="credits__logo-image" src="./assets/yapper-logo.png" alt="Yapper logo" />
+              </button>
+              <div class="credits__content">
+                <p class="credits__line">Build with ❤️ by Lebo</p>
+                <p class="credits__line credits__line--spaced">Special thanks to,</p>
+                <ul class="credits__list">
+                  <li>Leticia Delpin</li>
+                  <li>Opencode, Codex, Xcode</li>
+                  <li>Canva, Ascii-magic, Qwen</li>
+                </ul>
+                <p class="credits__footer">v0.1 / side quest build</p>
+                <p id="credits-copy-hint" class="credits__hint">click logo to copy `brew install yapper`</p>
+              </div>
+            </div>
+            <div class="window__resize-handle" data-resize-handle aria-hidden="true"></div>
+          </div>
+        </section>
+      </main>
+    </div>
+
+    <script src="./script.js"></script>
+  </body>
+</html>

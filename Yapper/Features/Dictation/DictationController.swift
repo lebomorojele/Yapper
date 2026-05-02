@@ -3,10 +3,10 @@ import Foundation
 final class DictationController: @unchecked Sendable {
     private var audioEngine: AudioEngineProtocol
     private var transcriber: TranscriberProtocol
-    private var llmProcessor: LLMProcessorProtocol
+    private var textCleanupProcessor: TextCleanupProcessing
     private var textInserter: TextInserterProtocol
+    private let heuristicTextCleanupProcessor: TextCleanupProcessing
 
-    // Callbacks — set by AppDelegate before use
     var onPartialTranscript: (@Sendable (String) -> Void)?
     var onSessionFinished: (@Sendable (RecordingSessionResult) -> Void)?
     var onRecordingStopped: (@Sendable () -> Void)?
@@ -23,17 +23,17 @@ final class DictationController: @unchecked Sendable {
     init(
         audioEngine: AudioEngineProtocol,
         transcriber: TranscriberProtocol,
-        llmProcessor: LLMProcessorProtocol,
-        textInserter: TextInserterProtocol
+        textCleanupProcessor: TextCleanupProcessing,
+        textInserter: TextInserterProtocol,
+        heuristicTextCleanupProcessor: TextCleanupProcessing = HeuristicTextCleanupProcessor()
     ) {
         self.audioEngine = audioEngine
         self.transcriber = transcriber
-        self.llmProcessor = llmProcessor
+        self.textCleanupProcessor = textCleanupProcessor
         self.textInserter = textInserter
+        self.heuristicTextCleanupProcessor = heuristicTextCleanupProcessor
         wireCallbacks()
     }
-
-    // MARK: - Setup
 
     private func wireCallbacks() {
         audioEngine.onAudio = { [weak self] samples in
@@ -58,12 +58,9 @@ final class DictationController: @unchecked Sendable {
         }
 
         transcriber.onFinal = { [weak self] text in
-            guard let self else { return }
-            self.currentTranscript = text
+            self?.currentTranscript = text
         }
     }
-
-    // MARK: - Model
 
     func loadModel() async {
         do {
@@ -77,13 +74,11 @@ final class DictationController: @unchecked Sendable {
         }
     }
 
-    // MARK: - Recording
-
     func startRecording(configuration: RecordingSessionConfiguration) {
         guard !isRecording else { return }
         isRecording = true
         activeConfiguration = configuration
-        activeSession = RecordingSession(purpose: configuration.purpose)
+        activeSession = RecordingSession()
         currentTranscript = ""
 
         let settings = SettingsManager.shared.settings
@@ -102,53 +97,32 @@ final class DictationController: @unchecked Sendable {
         audioEngine.stop()
         let finalText = transcriber.stop()
         currentTranscript = finalText
-        if activeSession == nil, let purpose = activeConfiguration?.purpose {
-            activeSession = RecordingSession(purpose: purpose)
+
+        if activeSession == nil {
+            activeSession = RecordingSession()
         }
         activeSession?.partialTranscript = finalText
 
         onRecordingStopped?()
 
-        if let activeConfiguration, activeConfiguration.shouldInsertText {
-            let settings = SettingsManager.shared.settings
-            let insertionOutcome = textInserter.insert(text: finalText, method: settings.insertionMethod)
-            finishSession(transcript: finalText, insertionOutcome: insertionOutcome)
-        } else if activeConfiguration?.purpose == .meeting {
+        guard activeConfiguration?.shouldInsertText == true else {
             finishSession(transcript: finalText, insertionOutcome: nil)
-        }
-        // Smart mode waits for an explicit follow-up action.
-    }
-
-    // MARK: - Smart Mode
-
-    func handleSmartModeSelection(_ option: SmartModeOption) {
-        let text = currentTranscript
-
-        if option == .cancel {
-            let settings = SettingsManager.shared.settings
-            let insertionOutcome = textInserter.insert(text: text, method: settings.insertionMethod)
-            finishSession(transcript: text, insertionOutcome: insertionOutcome)
             return
         }
 
         Task { [weak self] in
-            guard let self else { return }
-            do {
-                let processed = try await self.llmProcessor.process(text: text, option: option)
-                let settings = SettingsManager.shared.settings
-                let insertionOutcome = self.textInserter.insert(text: processed, method: settings.insertionMethod)
-                self.finishSession(transcript: processed, insertionOutcome: insertionOutcome)
-            } catch {
-                print("[DictationController] LLM error: \(error) — falling back to raw text")
-                let settings = SettingsManager.shared.settings
-                let insertionOutcome = self.textInserter.insert(text: text, method: settings.insertionMethod)
-                self.finishSession(transcript: text, insertionOutcome: insertionOutcome)
-            }
+            await self?.finishInsertedSession(rawTranscript: finalText)
         }
     }
 
     func discardRecording() {
-        guard isRecording else { return }
+        guard isRecording else {
+            activeConfiguration = nil
+            activeSession = nil
+            currentTranscript = ""
+            return
+        }
+
         isRecording = false
         audioEngine.stop()
         _ = transcriber.stop()
@@ -157,10 +131,63 @@ final class DictationController: @unchecked Sendable {
         activeSession = nil
     }
 
-    private func finishSession(transcript: String, insertionOutcome: InsertionOutcome?) {
-        guard let session = activeSession ?? activeConfiguration.map({ RecordingSession(purpose: $0.purpose) }) else {
+    private func finishInsertedSession(rawTranscript: String) async {
+        let trimmed = rawTranscript.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else {
+            finishSession(transcript: trimmed, insertionOutcome: nil)
             return
         }
+
+        let settings = SettingsManager.shared.settings
+        var outputText: String
+        if settings.cleanupEnabled {
+            let fastOutput = await cleanedTextUsingHeuristic(from: trimmed)
+            guard shouldUseModelCleanup(for: trimmed, settings: settings) else {
+                let insertionOutcome = textInserter.insert(text: fastOutput, method: settings.insertionMethod)
+                finishSession(transcript: fastOutput, insertionOutcome: insertionOutcome)
+                return
+            }
+
+            do {
+                let cleaned = try await textCleanupProcessor.clean(text: fastOutput)
+                    .trimmingCharacters(in: .whitespacesAndNewlines)
+                outputText = cleaned.isEmpty ? fastOutput : cleaned
+            } catch {
+                print("[DictationController] Cleanup failed: \(error) — inserting fast-path transcript")
+                outputText = fastOutput
+            }
+        } else {
+            outputText = trimmed
+        }
+
+        let insertionOutcome = textInserter.insert(text: outputText, method: settings.insertionMethod)
+        finishSession(transcript: outputText, insertionOutcome: insertionOutcome)
+    }
+
+    private func cleanedTextUsingHeuristic(from text: String) async -> String {
+        do {
+            let cleaned = try await heuristicTextCleanupProcessor.clean(text: text)
+                .trimmingCharacters(in: .whitespacesAndNewlines)
+            return cleaned.isEmpty ? text : cleaned
+        } catch {
+            return text
+        }
+    }
+
+    private func shouldUseModelCleanup(for text: String, settings: Settings) -> Bool {
+        let threshold = settings.modelCleanupWordThreshold
+        if threshold <= 0 {
+            return true
+        }
+
+        let wordCount = text
+            .split(whereSeparator: \.isWhitespace)
+            .count
+        return wordCount >= threshold
+    }
+
+    private func finishSession(transcript: String, insertionOutcome: InsertionOutcome?) {
+        guard let session = activeSession else { return }
 
         let result = RecordingSessionResult(
             session: session,

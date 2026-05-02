@@ -2,17 +2,18 @@ import AppKit
 
 @MainActor
 final class AppDelegate: NSObject, NSApplicationDelegate {
+    private static let processingIndicatorDelay: Duration = .milliseconds(180)
+
     private var statusItem: NSStatusItem?
-    private var statusMenu: NSMenu?
     private var runtimeStatusItem: NSMenuItem?
     private var floatingPanel: FloatingPanel?
-    private var smartSelectionKeyMonitor: Any?
+    private var processingIndicatorTask: Task<Void, Never>?
 
     private let runtime = AppRuntimeCoordinator(
         dictationController: DictationController(
             audioEngine: AudioEngine(),
             transcriber: ParakeetTranscriber(),
-            llmProcessor: LLMProcessor(),
+            textCleanupProcessor: LlamaCppTextCleanupProcessor(),
             textInserter: TextInserter()
         ),
         hotkeyManager: HotkeyManager()
@@ -20,11 +21,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     nonisolated func applicationDidFinishLaunching(_ notification: Notification) {
         Task { @MainActor in
+            UITestSupport.configureIfNeeded()
             self.setupMenuBar()
             self.setupFloatingPanel()
             self.bindRuntime()
             self.runtime.start()
-            NSApp.setActivationPolicy(.accessory)
+            NSApp.setActivationPolicy(UITestSupport.isEnabled ? .regular : .accessory)
+            if UITestSupport.shouldOpenSettingsOnLaunch() {
+                SettingsWindowController.shared.show()
+            }
         }
     }
 
@@ -38,15 +43,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
 
         if let button = statusItem?.button {
-            let iconPath = Bundle.main.path(forResource: "icon1", ofType: "png")
-                ?? NSHomeDirectory() + "/Documents/projects/Yapper/icon1.png"
-            button.image = NSImage(contentsOfFile: iconPath)
-            button.image?.size = NSSize(width: 18, height: 18)
+            button.title = ""
+            button.imagePosition = .imageOnly
+            button.imageScaling = .scaleProportionallyDown
+            button.image = makeStatusBarImage()
             button.image?.isTemplate = true
         }
 
         let menu = NSMenu()
-        runtimeStatusItem = NSMenuItem(title: "Status: Starting up...", action: nil, keyEquivalent: "")
+        runtimeStatusItem = NSMenuItem(title: "Yapper: Starting up...", action: nil, keyEquivalent: "")
         runtimeStatusItem?.isEnabled = false
         if let runtimeStatusItem {
             menu.addItem(runtimeStatusItem)
@@ -54,40 +59,20 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         menu.addItem(.separator())
 
         let recordItem = NSMenuItem(
-            title: "Start Recording",
+            title: "Record",
             action: #selector(toggleRecording),
             keyEquivalent: "r"
         )
         recordItem.keyEquivalentModifierMask = .command
         menu.addItem(recordItem)
 
-        menu.addItem(.separator())
-
-        let historyItem = NSMenuItem(
-            title: "History...",
-            action: #selector(openHistory),
-            keyEquivalent: "h"
-        )
-        historyItem.keyEquivalentModifierMask = .command
-        menu.addItem(historyItem)
-
         let prefsItem = NSMenuItem(
-            title: "Preferences...",
+            title: "Settings",
             action: #selector(openPreferences),
             keyEquivalent: ","
         )
         prefsItem.keyEquivalentModifierMask = .command
         menu.addItem(prefsItem)
-
-        #if DEBUG
-        let catalogItem = NSMenuItem(
-            title: "UI Design Catalog...",
-            action: #selector(openDesignCatalog),
-            keyEquivalent: "d"
-        )
-        catalogItem.keyEquivalentModifierMask = [.command, .shift]
-        menu.addItem(catalogItem)
-        #endif
 
         menu.addItem(.separator())
 
@@ -99,7 +84,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         quitItem.keyEquivalentModifierMask = .command
         menu.addItem(quitItem)
 
-        statusMenu = menu
         statusItem?.menu = menu
     }
 
@@ -116,39 +100,55 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     private func render(_ state: AppRuntimeState) {
         runtimeStatusItem?.title = statusLine(for: state)
+        updateStatusButton(for: state)
 
-        if state.showsSmartOptions {
-            installSmartSelectionKeyMonitor()
-        } else {
-            removeSmartSelectionKeyMonitor()
-        }
-
-        if state.displayRecordingState == .idle && !state.showsSmartOptions {
+        let displayState = state.displayRecordingState
+        if displayState == .idle || displayState == .loading {
+            processingIndicatorTask?.cancel()
+            processingIndicatorTask = nil
             floatingPanel?.hidePanel()
             return
         }
 
-        floatingPanel?.showAtTopCenter()
-        floatingPanel?.updateContent(
-            state: state.displayRecordingState,
+        if displayState == .processing {
+            scheduleProcessingIndicator(for: state)
+            return
+        }
+
+        processingIndicatorTask?.cancel()
+        processingIndicatorTask = nil
+        presentFloatingPanel(
+            state: displayState,
             partialTranscript: state.partialTranscript,
-            showOptions: state.showsSmartOptions,
-            audioMeter: state.audioMeter,
-            recordingStartTime: state.recordingStartTime,
-            onOptionSelected: { [weak self] option in
-                self?.runtime.selectSmartMode(option)
-            }
+            audioMeter: state.audioMeter
         )
     }
 
     private func statusLine(for state: AppRuntimeState) -> String {
         if !state.modelReady {
-            return "Status: Loading model..."
+            return "Yapper: Loading model..."
+        }
+
+        switch state.recordingPhase {
+        case .loading:
+            return "Yapper: Loading model..."
+        case .recording:
+            return "Yapper: Listening"
+        case .processing:
+            return "Yapper: Processing..."
+        case .completed(let outcome):
+            return outcome == .clipboard ? "Yapper: Copied" : "Yapper: Inserted"
+        case .cancelled:
+            return "Yapper: Canceled"
+        case .failed:
+            return "Yapper: Failed"
+        case .idle:
+            break
         }
 
         switch state.hotkeyMonitoringStatus {
         case .ready:
-            return "Status: Hotkeys ready"
+            return "Yapper: Ready"
         case .missingPermissions:
             var missing: [String] = []
             if state.permissions.accessibility != .authorized {
@@ -157,46 +157,88 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             if state.permissions.inputMonitoring != .authorized {
                 missing.append("Input Monitoring")
             }
-            return "Status: Missing \(missing.joined(separator: " + "))"
+            return "Yapper: Missing \(missing.joined(separator: " + "))"
         case .temporarilyDisabled:
-            return "Status: Recovering hotkeys..."
+            return "Yapper: Recovering hotkeys..."
         case .failedToInstall:
-            return "Status: Hotkeys unavailable"
+            return "Yapper: Hotkeys unavailable"
         case .stopped:
-            return "Status: Hotkeys stopped"
+            return "Yapper: Hotkeys stopped"
         }
     }
 
-    private func installSmartSelectionKeyMonitor() {
-        guard smartSelectionKeyMonitor == nil else { return }
+    private func updateStatusButton(for state: AppRuntimeState) {
+        guard let button = statusItem?.button else { return }
+        button.toolTip = statusLine(for: state)
 
-        smartSelectionKeyMonitor = NSEvent.addGlobalMonitorForEvents(matching: .keyDown) { [weak self] event in
-            Task { @MainActor in
-                self?.handleSmartSelectionKeyEvent(event)
+        switch state.recordingPhase {
+        case .recording:
+            button.contentTintColor = .systemRed
+        case .processing:
+            button.contentTintColor = .controlAccentColor
+        case .completed:
+            button.contentTintColor = .systemGreen
+        case .cancelled, .failed:
+            button.contentTintColor = .systemOrange
+        case .idle, .loading:
+            button.contentTintColor = nil
+        }
+    }
+
+    private func scheduleProcessingIndicator(for state: AppRuntimeState) {
+        processingIndicatorTask?.cancel()
+        processingIndicatorTask = Task { @MainActor [weak self] in
+            try? await Task.sleep(for: Self.processingIndicatorDelay)
+            guard let self,
+                  self.runtime.state.displayRecordingState == .processing else { return }
+            self.presentFloatingPanel(
+                state: .processing,
+                partialTranscript: self.runtime.state.partialTranscript,
+                audioMeter: self.runtime.state.audioMeter
+            )
+        }
+    }
+
+    private func presentFloatingPanel(
+        state: RecordingState,
+        partialTranscript: String,
+        audioMeter: AudioMeter
+    ) {
+        floatingPanel?.updateContent(
+            state: state,
+            partialTranscript: partialTranscript,
+            audioMeter: audioMeter
+        )
+        floatingPanel?.showAtTopCenter()
+    }
+
+    private func makeStatusBarImage() -> NSImage? {
+        if let assetImage = Bundle.module.image(forResource: "MenuBarIcon") {
+            assetImage.isTemplate = true
+            assetImage.size = NSSize(width: 18, height: 18)
+            return assetImage
+        }
+
+        let filenames = ["icon.png", "icon@2x.png", "icon@3x.png"]
+        let image = NSImage(size: NSSize(width: 18, height: 18))
+
+        for filename in filenames {
+            let parts = filename.split(separator: ".", maxSplits: 1).map(String.init)
+            guard parts.count == 2,
+                  let resourceURL = Bundle.module.url(
+                    forResource: parts[0],
+                    withExtension: parts[1],
+                    subdirectory: "MenuBarResources"
+                  ),
+                  let representation = NSImageRep(contentsOf: resourceURL) else {
+                continue
             }
+            image.addRepresentation(representation)
         }
-    }
 
-    private func removeSmartSelectionKeyMonitor() {
-        if let smartSelectionKeyMonitor {
-            NSEvent.removeMonitor(smartSelectionKeyMonitor)
-            self.smartSelectionKeyMonitor = nil
-        }
-    }
-
-    private func handleSmartSelectionKeyEvent(_ event: NSEvent) {
-        switch event.charactersIgnoringModifiers {
-        case "1":
-            runtime.selectSmartMode(.slack)
-        case "2":
-            runtime.selectSmartMode(.chat)
-        case "3":
-            runtime.selectSmartMode(.email)
-        case "4":
-            runtime.selectSmartMode(.prompt)
-        default:
-            break
-        }
+        guard !image.representations.isEmpty else { return nil }
+        image.isTemplate = true
+        return image
     }
 
     @objc private func toggleRecording() {
@@ -207,18 +249,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         SettingsWindowController.shared.show()
     }
 
-    @objc private func openHistory() {
-        HistoryWindowController.shared.show()
-    }
-
-    #if DEBUG
-    @objc private func openDesignCatalog() {
-        DesignCatalogWindowController.shared.show()
-    }
-    #endif
-
     @objc private func quitApp() {
-        removeSmartSelectionKeyMonitor()
         runtime.stop()
         NSApp.terminate(nil)
     }
