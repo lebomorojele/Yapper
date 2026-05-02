@@ -78,6 +78,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         prefsItem.keyEquivalentModifierMask = .command
         menu.addItem(prefsItem)
 
+        let enhancedCleanupItem = NSMenuItem(
+            title: "Enhanced Cleanup...",
+            action: #selector(openEnhancedCleanup),
+            keyEquivalent: ""
+        )
+        menu.addItem(enhancedCleanupItem)
+
         menu.addItem(.separator())
 
         let quitItem = NSMenuItem(
@@ -265,26 +272,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             try? await Task.sleep(nanoseconds: 800_000_000)
             guard SettingsManager.shared.settings.enhancedCleanupPreference == .undecided else { return }
 
-            let alert = NSAlert()
-            alert.icon = BrandAssets.appIconImage(size: 72)
-            alert.messageText = "Recommended: Enhanced Local Cleanup"
-            alert.informativeText = """
-            Yapper is ready to use now. For smoother punctuation and casing on longer dictations, we recommend downloading a local cleanup model.
-
-            It runs on your Mac, comes from Hugging Face, and is about \(LocalModelManager.modelDisplaySize). You can remove it later in Settings.
-            """
-            alert.alertStyle = .informational
-            alert.addButton(withTitle: "Download Recommended Model")
-            alert.addButton(withTitle: "Not Now")
-
-            NSApp.activate(ignoringOtherApps: true)
-            let response = alert.runModal()
-            if response == .alertFirstButtonReturn {
-                LocalModelManager.shared.downloadModel()
-                ModelDownloadWindowController.shared.show()
-            } else {
-                LocalModelManager.shared.markDeclined()
-            }
+            ModelDownloadWindowController.shared.show()
         }
     }
 
@@ -323,6 +311,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     @objc private func openPreferences() {
         SettingsWindowController.shared.show()
+    }
+
+    @objc private func openEnhancedCleanup() {
+        ModelDownloadWindowController.shared.show()
     }
 
     @objc private func quitApp() {

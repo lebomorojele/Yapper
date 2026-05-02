@@ -8,7 +8,7 @@ final class ModelDownloadWindowController: NSWindowController {
     private init() {
         let hostingView = NSHostingView(rootView: ModelDownloadProgressView())
         let window = NSWindow(
-            contentRect: NSRect(x: 0, y: 0, width: 420, height: 268),
+            contentRect: NSRect(x: 0, y: 0, width: 460, height: 340),
             styleMask: [.titled, .closable],
             backing: .buffered,
             defer: false
@@ -53,11 +53,20 @@ private struct ModelDownloadProgressView: View {
             }
 
             progressContent
-                .frame(height: 36)
+                .frame(height: 54)
 
             HStack {
                 Spacer()
                 switch manager.status {
+                case .notInstalled:
+                    Button("Not Now") {
+                        manager.markDeclined()
+                        ModelDownloadWindowController.shared.close()
+                    }
+                    Button("Download Recommended") {
+                        manager.downloadModel()
+                    }
+                    .keyboardShortcut(.defaultAction)
                 case .downloading:
                     Button("Cancel") {
                         manager.cancelDownload()
@@ -75,15 +84,13 @@ private struct ModelDownloadProgressView: View {
                         ModelDownloadWindowController.shared.close()
                     }
                     .keyboardShortcut(.defaultAction)
-                default:
-                    Button("Close") {
-                        ModelDownloadWindowController.shared.close()
-                    }
+                case .verifying:
+                    EmptyView()
                 }
             }
         }
         .padding(24)
-        .frame(width: 420, height: 268)
+        .frame(width: 460, height: 340)
     }
 
     @ViewBuilder
@@ -113,9 +120,13 @@ private struct ModelDownloadProgressView: View {
             Label("Download did not finish", systemImage: "exclamationmark.triangle.fill")
                 .foregroundStyle(.orange)
         case .notInstalled:
-            Text("Yapper will keep using fast cleanup.")
-                .font(.caption)
-                .foregroundStyle(.secondary)
+            VStack(spacing: 6) {
+                Label("Recommended for longer dictations", systemImage: "sparkles")
+                    .foregroundStyle(.blue)
+                Text("\(LocalModelManager.modelDisplaySize) • Runs locally • Removable anytime")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
         }
     }
 
@@ -130,7 +141,7 @@ private struct ModelDownloadProgressView: View {
         case .failed:
             return "Download Interrupted"
         case .notInstalled:
-            return "Enhanced Cleanup"
+            return "Recommended: Enhanced Local Cleanup"
         }
     }
 
@@ -145,7 +156,7 @@ private struct ModelDownloadProgressView: View {
         case .failed(let message):
             return message
         case .notInstalled:
-            return "You can download the recommended local model later from Settings."
+            return "Yapper works right away with fast cleanup. Download the recommended local model for smoother punctuation and casing on longer dictations."
         }
     }
 }
