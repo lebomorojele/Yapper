@@ -53,10 +53,12 @@ export DOWNLOAD_URL_PREFIX="https://yapper.app/downloads"
 app/scripts/generate-appcast.sh
 ```
 
-Upload the generated files from `app/dist/sparkle/` to the hosted downloads directory. `appcast.xml` must be available at:
+Upload the generated DMG files from `app/dist/sparkle/` to the hosted downloads directory. `appcast.xml` must be available at:
 
 ```text
 https://yapper.app/appcast.xml
 ```
 
 If the appcast is hosted somewhere else, update `SUFeedURL` in `app/Yapper/Support/Info.plist` before packaging.
+
+For the full Hetzner/Coolify deployment flow, see `DEPLOYMENT.md` at the repo root.

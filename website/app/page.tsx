@@ -11,6 +11,7 @@ const SENTENCES = [
 ]
 
 const FULL_TEXT = SENTENCES.join(" ")
+const DOWNLOAD_URL = "/downloads/Yapper-latest.dmg"
 
 export default function Home() {
   const [scrollProgress, setScrollProgress] = useState(0)
@@ -83,7 +84,7 @@ export default function Home() {
   const showAppIcon = scrollProgress >= 0.85
 
   const handleDownload = () => {
-    window.open("https://apps.apple.com/app/yapper", "_blank")
+    window.location.href = DOWNLOAD_URL
   }
 
   return (
@@ -178,9 +179,7 @@ export default function Home() {
           <span className="font-medium text-white/90">Yapper</span>
           <span className="mx-3 text-white/40">|</span>
           <a
-            href="https://apps.apple.com/app/yapper"
-            target="_blank"
-            rel="noopener noreferrer"
+            href={DOWNLOAD_URL}
             className="hover:text-white/90 transition-colors underline underline-offset-2"
           >
             Download

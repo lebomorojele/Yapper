@@ -47,6 +47,7 @@ cat <<EOF
 Generated Sparkle feed:
   $RELEASES_DIR/appcast.xml
 
-Upload the DMG and appcast files in $RELEASES_DIR to:
-  $DOWNLOAD_URL_PREFIX
+Upload:
+  - DMG files from $RELEASES_DIR to $DOWNLOAD_URL_PREFIX
+  - appcast.xml from $RELEASES_DIR to https://yapper.app/appcast.xml
 EOF
