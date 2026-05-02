@@ -4,11 +4,14 @@ import Combine
 @MainActor
 final class AppDelegate: NSObject, NSApplicationDelegate {
     private static let processingIndicatorDelay: Duration = .milliseconds(180)
+    private static let enhancedCleanupPromptDelay: Duration = .milliseconds(1_200)
 
     private var statusItem: NSStatusItem?
     private var runtimeStatusItem: NSMenuItem?
+    private var enhancedCleanupMenuItem: NSMenuItem?
     private var floatingPanel: FloatingPanel?
     private var processingIndicatorTask: Task<Void, Never>?
+    private var enhancedCleanupPromptTask: Task<Void, Never>?
     private var previousSoundState: RecordingState?
     private var modelStatusCancellable: AnyCancellable?
 
@@ -30,7 +33,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             self.bindRuntime()
             self.runtime.start()
             NSApp.setActivationPolicy(UITestSupport.isEnabled ? .regular : .accessory)
-            self.presentEnhancedCleanupPromptIfNeeded()
             if UITestSupport.shouldOpenSettingsOnLaunch() {
                 SettingsWindowController.shared.show()
             }
@@ -78,12 +80,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         prefsItem.keyEquivalentModifierMask = .command
         menu.addItem(prefsItem)
 
-        let enhancedCleanupItem = NSMenuItem(
+        enhancedCleanupMenuItem = NSMenuItem(
             title: "Enhanced Cleanup...",
             action: #selector(openEnhancedCleanup),
             keyEquivalent: ""
         )
-        menu.addItem(enhancedCleanupItem)
+        if let enhancedCleanupMenuItem {
+            menu.addItem(enhancedCleanupMenuItem)
+        }
 
         menu.addItem(.separator())
 
@@ -115,7 +119,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     private func render(_ state: AppRuntimeState) {
         runtimeStatusItem?.title = statusLine(for: state)
+        updateEnhancedCleanupMenuItem()
         updateStatusButton(for: state)
+        queueEnhancedCleanupPromptIfNeeded(for: state)
 
         let displayState = state.displayRecordingState
         playSoundIfNeeded(for: displayState)
@@ -262,17 +268,45 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
     }
 
-    private func presentEnhancedCleanupPromptIfNeeded() {
+    private func queueEnhancedCleanupPromptIfNeeded(for state: AppRuntimeState) {
         guard !UITestSupport.isEnabled,
+              enhancedCleanupPromptTask == nil,
+              state.modelReady,
+              state.recordingPhase == .idle,
+              LocalModelManager.shared.status == .notInstalled,
               SettingsManager.shared.settings.enhancedCleanupPreference == .undecided else {
             return
         }
 
-        Task { @MainActor in
-            try? await Task.sleep(nanoseconds: 800_000_000)
-            guard SettingsManager.shared.settings.enhancedCleanupPreference == .undecided else { return }
+        enhancedCleanupPromptTask = Task { @MainActor [weak self] in
+            try? await Task.sleep(for: Self.enhancedCleanupPromptDelay)
+            self?.enhancedCleanupPromptTask = nil
+            guard SettingsManager.shared.settings.enhancedCleanupPreference == .undecided,
+                  LocalModelManager.shared.status == .notInstalled,
+                  self?.runtime.state.recordingPhase == .idle else {
+                return
+            }
 
             ModelDownloadWindowController.shared.show()
+        }
+    }
+
+    private func updateEnhancedCleanupMenuItem() {
+        guard let enhancedCleanupMenuItem else { return }
+
+        switch LocalModelManager.shared.status {
+        case .notInstalled:
+            enhancedCleanupMenuItem.title = SettingsManager.shared.settings.enhancedCleanupPreference == .undecided
+                ? "Enhanced Cleanup Recommended..."
+                : "Enhanced Cleanup..."
+        case .downloading(let progress):
+            enhancedCleanupMenuItem.title = "Enhanced Cleanup Downloading \(Int(progress * 100))%..."
+        case .verifying:
+            enhancedCleanupMenuItem.title = "Enhanced Cleanup Verifying..."
+        case .ready:
+            enhancedCleanupMenuItem.title = "Enhanced Cleanup Ready..."
+        case .failed:
+            enhancedCleanupMenuItem.title = "Enhanced Cleanup Needs Attention..."
         }
     }
 
