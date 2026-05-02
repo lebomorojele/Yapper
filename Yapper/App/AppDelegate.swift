@@ -5,6 +5,9 @@ import Combine
 final class AppDelegate: NSObject, NSApplicationDelegate {
     private static let processingIndicatorDelay: Duration = .milliseconds(180)
     private static let enhancedCleanupPromptDelay: Duration = .milliseconds(1_200)
+    private static let idleStatusIconTint = NSColor(name: NSColor.Name("YapperIdleStatusIconTint")) { appearance in
+        appearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua ? .white : .black
+    }
 
     private var statusItem: NSStatusItem?
     private var runtimeStatusItem: NSMenuItem?
@@ -54,6 +57,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             button.imageScaling = .scaleProportionallyDown
             button.image = makeStatusBarImage()
             button.image?.isTemplate = true
+            button.contentTintColor = Self.idleStatusIconTint
         }
 
         let menu = NSMenu()
@@ -220,7 +224,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             case .failed:
                 button.contentTintColor = .systemOrange
             case .notInstalled, .ready:
-                button.contentTintColor = nil
+                button.contentTintColor = Self.idleStatusIconTint
             }
         }
     }
