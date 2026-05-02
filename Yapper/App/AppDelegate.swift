@@ -300,17 +300,32 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         switch LocalModelManager.shared.status {
         case .notInstalled:
-            enhancedCleanupMenuItem.title = SettingsManager.shared.settings.enhancedCleanupPreference == .undecided
-                ? "Enhanced Cleanup Recommended..."
-                : "Enhanced Cleanup..."
+            switch SettingsManager.shared.settings.enhancedCleanupPreference {
+            case .undecided:
+                enhancedCleanupMenuItem.title = "Enhanced Cleanup Recommended..."
+                enhancedCleanupMenuItem.isHidden = false
+                enhancedCleanupMenuItem.isEnabled = true
+            case .enabled:
+                enhancedCleanupMenuItem.title = "Download Enhanced Cleanup..."
+                enhancedCleanupMenuItem.isHidden = false
+                enhancedCleanupMenuItem.isEnabled = true
+            case .declined:
+                enhancedCleanupMenuItem.isHidden = true
+            }
         case .downloading(let progress):
             enhancedCleanupMenuItem.title = "Enhanced Cleanup Downloading \(Int(progress * 100))%..."
+            enhancedCleanupMenuItem.isHidden = false
+            enhancedCleanupMenuItem.isEnabled = true
         case .verifying:
             enhancedCleanupMenuItem.title = "Enhanced Cleanup Verifying..."
+            enhancedCleanupMenuItem.isHidden = false
+            enhancedCleanupMenuItem.isEnabled = true
         case .ready:
-            enhancedCleanupMenuItem.title = "Enhanced Cleanup Ready..."
+            enhancedCleanupMenuItem.isHidden = true
         case .failed:
             enhancedCleanupMenuItem.title = "Enhanced Cleanup Needs Attention..."
+            enhancedCleanupMenuItem.isHidden = false
+            enhancedCleanupMenuItem.isEnabled = true
         }
     }
 
