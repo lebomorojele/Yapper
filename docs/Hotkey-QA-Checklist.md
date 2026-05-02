@@ -22,7 +22,7 @@ Validate that Yapper's dictation lifecycle, local cleanup, sound cues, and outpu
 - Clipboard fallback succeeds when direct insertion is unavailable
 - Completion pill distinguishes inserted output vs clipboard fallback
 - Cleanup enabled: short snippets receive fast heuristic punctuation/casing
-- Cleanup enabled: longer snippets use the local model when the bundled resources are present
+- Cleanup enabled: longer snippets use enhanced local cleanup when the model is installed
 - Cleanup disabled: raw transcript is inserted without punctuation/casing changes
 
 ## Rapid Input / Edge Cases

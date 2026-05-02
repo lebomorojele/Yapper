@@ -75,7 +75,12 @@ final class PreferencesViewModel: ObservableObject {
         ).devices
     }
 
-    private func persist() {
+    func setEnhancedCleanupPreference(_ preference: EnhancedCleanupPreference) {
+        settings.enhancedCleanupPreference = preference
+        persist()
+    }
+
+    func persist() {
         SettingsManager.shared.settings = settings
     }
 }
@@ -157,6 +162,7 @@ private struct InsertionMethodSegmentedControl: NSViewRepresentable {
 
 private struct GeneralPreferencesPane: View {
     @ObservedObject var model: PreferencesViewModel
+    @ObservedObject private var localModel = LocalModelManager.shared
 
     var body: some View {
         Form {
@@ -169,7 +175,9 @@ private struct GeneralPreferencesPane: View {
                 Toggle("Clean punctuation and casing", isOn: model.binding(for: \.cleanupEnabled))
 
                 if model.settings.cleanupEnabled {
-                    LabeledContent("Use local model after") {
+                    enhancedCleanupControl
+
+                    LabeledContent("Use enhanced cleanup after") {
                         Stepper(
                             value: model.binding(for: \.modelCleanupWordThreshold),
                             in: 0...40,
@@ -188,12 +196,87 @@ private struct GeneralPreferencesPane: View {
             } header: {
                 Text("General")
             } footer: {
-                Text("Accessibility inserts into the focused field. Clipboard is more compatible with stubborn apps, but briefly replaces the clipboard while pasting. Shorter snippets stay on the instant cleanup path; longer dictation can use the local model.")
+                Text("Accessibility inserts into the focused field. Clipboard is more compatible with stubborn apps, but briefly replaces the clipboard while pasting. Shorter snippets stay on the instant cleanup path; enhanced cleanup uses an optional local model for longer dictation.")
             }
         }
         .formStyle(.grouped)
         .navigationTitle("General")
         .accessibilityIdentifier("settings.pane.general")
+    }
+
+    @ViewBuilder
+    private var enhancedCleanupControl: some View {
+        LabeledContent("Enhanced Local Cleanup") {
+            VStack(alignment: .trailing, spacing: 8) {
+                HStack(spacing: 8) {
+                    Text(enhancedCleanupStatusText)
+                        .foregroundStyle(enhancedCleanupStatusColor)
+                        .font(.callout)
+
+                    switch localModel.status {
+                    case .notInstalled:
+                        Button("Download") {
+                            model.setEnhancedCleanupPreference(.enabled)
+                            localModel.downloadModel()
+                        }
+                    case .downloading:
+                        Button("Cancel") {
+                            localModel.cancelDownload()
+                        }
+                    case .verifying:
+                        ProgressView()
+                            .controlSize(.small)
+                    case .ready:
+                        Button("Remove") {
+                            localModel.removeModel()
+                            model.settings = SettingsManager.shared.settings
+                        }
+                    case .failed:
+                        Button("Try Again") {
+                            model.setEnhancedCleanupPreference(.enabled)
+                            localModel.downloadModel()
+                        }
+                    }
+                }
+
+                if case .downloading(let progress) = localModel.status {
+                    ProgressView(value: progress)
+                        .frame(width: 180)
+                }
+
+                Text("Runs locally after download. Source: Hugging Face.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+        }
+    }
+
+    private var enhancedCleanupStatusText: String {
+        switch localModel.status {
+        case .notInstalled:
+            return model.settings.enhancedCleanupPreference == .declined ? "Not installed" : "Recommended"
+        case .downloading(let progress):
+            return "\(Int(progress * 100))%"
+        case .verifying:
+            return "Verifying"
+        case .ready:
+            return "Ready"
+        case .failed:
+            return "Failed"
+        }
+    }
+
+    private var enhancedCleanupStatusColor: Color {
+        switch localModel.status {
+        case .ready:
+            return .green
+        case .failed:
+            return .red
+        case .downloading, .verifying:
+            return .secondary
+        case .notInstalled:
+            return model.settings.enhancedCleanupPreference == .declined ? .secondary : .orange
+        }
     }
 
     private var modelCleanupThresholdLabel: String {

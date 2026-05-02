@@ -56,7 +56,7 @@ Hotkeys don't work when running via Xcode debugger or shell because they run in 
 - `Yapper/Core/Audio/SoundManager.swift` - Sound playback (start.mp3, success.mp3, system error fallback)
 - `Yapper/Core/TextCleanup/TextCleanupProcessor.swift` - Heuristic and local llama.cpp transcript cleanup
 - `Yapper/Features/Dictation/DictationController.swift` - Recording/transcription session controller
-- `Yapper/LocalInference/` - Bundled llama.cpp binaries and cleanup GGUF model
+- `Yapper/LocalInference/` - Bundled llama.cpp binaries for optional enhanced cleanup
 - `Yapper/UI/FloatingPanel/PillContentView.swift` - Recording, processing, inserted/copied, canceled, and failed states
 - `Yapper/UI/Settings/SettingsView.swift` - Preferences view for insertion, audio, keyboard, local cleanup, and about
 
@@ -64,7 +64,7 @@ Hotkeys don't work when running via Xcode debugger or shell because they run in 
 
 - **Hotkey:** Globe/Fn single tap toggles dictation start/stop
 - **Sound effects:** start.mp3 on listening start, success.mp3 on inserted/copied completion, system fallback on error
-- **Local cleanup:** Short transcripts use deterministic punctuation/casing; longer transcripts can use the bundled local GGUF model
+- **Local cleanup:** Short transcripts use deterministic punctuation/casing; longer transcripts can use the optional downloaded GGUF model
 - **Text insertion:** Accessibility insertion by default, with clipboard fallback mode available in settings
 - **Preferences:** Native Tahoe-style preferences with live audio metering, insertion controls, keyboard notes, and local cleanup settings
 

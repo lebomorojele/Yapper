@@ -8,7 +8,7 @@ enum TextCleanupError: Error, LocalizedError, Sendable {
     var errorDescription: String? {
         switch self {
         case .missingLocalInferenceResources:
-            return "Local cleanup resources are not bundled"
+            return "Enhanced local cleanup model is not installed"
         case .timedOut:
             return "Local cleanup timed out"
         case .emptyOutput:
@@ -43,6 +43,7 @@ struct HeuristicTextCleanupProcessor: TextCleanupProcessing {
 final class LlamaCppTextCleanupProcessor: TextCleanupProcessing, @unchecked Sendable {
     private let executableURL: URL?
     private let modelURL: URL?
+    private let modelURLProvider: (@Sendable () async -> URL?)?
     private let timeout: TimeInterval
 
     init(
@@ -55,22 +56,30 @@ final class LlamaCppTextCleanupProcessor: TextCleanupProcessing, @unchecked Send
             withExtension: nil,
             subdirectory: "LocalInference"
         ),
-        modelURL: URL? = Bundle.module.url(
-            forResource: "cleanup-model",
-            withExtension: "gguf",
-            subdirectory: "LocalInference"
-        ),
+        modelURL: URL? = nil,
+        modelURLProvider: (@Sendable () async -> URL?)? = {
+            await MainActor.run {
+                LocalModelManager.shared.availableModelURL()
+            }
+        },
         timeout: TimeInterval = 10.0
     ) {
         self.executableURL = executableURL
         self.modelURL = modelURL
+        self.modelURLProvider = modelURLProvider
         self.timeout = timeout
     }
 
     func clean(text: String) async throws -> String {
         let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return trimmed }
-        guard let executableURL, let modelURL else {
+        let resolvedModelURL: URL?
+        if let modelURL {
+            resolvedModelURL = modelURL
+        } else {
+            resolvedModelURL = await modelURLProvider?()
+        }
+        guard let executableURL, let resolvedModelURL else {
             throw TextCleanupError.missingLocalInferenceResources
         }
 
@@ -89,7 +98,7 @@ final class LlamaCppTextCleanupProcessor: TextCleanupProcessing, @unchecked Send
         Output:
         """
 
-        return try await runLlama(prompt: prompt, executableURL: executableURL, modelURL: modelURL)
+        return try await runLlama(prompt: prompt, executableURL: executableURL, modelURL: resolvedModelURL)
     }
 
     private func runLlama(prompt: String, executableURL: URL, modelURL: URL) async throws -> String {

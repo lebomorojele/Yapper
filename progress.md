@@ -12,7 +12,7 @@
 - [x] Add deterministic heuristic punctuation/casing fallback
 - [x] Add llama.cpp CLI adapter with strict cleanup prompt and raw-text fallback
 - [x] Bundle macOS arm64 `llama-cli` and `llama-completion`
-- [x] Bundle Qwen2.5 1.5B Instruct Q4_K_M GGUF as `cleanup-model.gguf`
+- [x] Download Qwen2.5 1.5B Instruct Q4_K_M GGUF on opt-in instead of bundling it
 
 ## Phase 2: Bundle + Performance Polish
 - [ ] Measure cleanup latency on short dictation snippets

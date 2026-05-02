@@ -8,6 +8,7 @@ final class SettingsTests: XCTestCase {
         XCTAssertEqual(settings.insertionMethod, .axuiElement)
         XCTAssertTrue(settings.cleanupEnabled)
         XCTAssertEqual(settings.modelCleanupWordThreshold, 10)
+        XCTAssertEqual(settings.enhancedCleanupPreference, .undecided)
     }
     
     func testUpdateSettings() {
@@ -17,8 +18,10 @@ final class SettingsTests: XCTestCase {
         SettingsManager.shared.update {
             $0.cleanupEnabled = false
             $0.modelCleanupWordThreshold = 16
+            $0.enhancedCleanupPreference = .declined
         }
         XCTAssertFalse(SettingsManager.shared.settings.cleanupEnabled)
         XCTAssertEqual(SettingsManager.shared.settings.modelCleanupWordThreshold, 16)
+        XCTAssertEqual(SettingsManager.shared.settings.enhancedCleanupPreference, .declined)
     }
 }

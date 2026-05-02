@@ -28,6 +28,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             self.bindRuntime()
             self.runtime.start()
             NSApp.setActivationPolicy(UITestSupport.isEnabled ? .regular : .accessory)
+            self.presentEnhancedCleanupPromptIfNeeded()
             if UITestSupport.shouldOpenSettingsOnLaunch() {
                 SettingsWindowController.shared.show()
             }
@@ -227,6 +228,37 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             SoundManager.shared.play(.error)
         case .idle, .loading, .processing, .cancelled:
             break
+        }
+    }
+
+    private func presentEnhancedCleanupPromptIfNeeded() {
+        guard !UITestSupport.isEnabled,
+              SettingsManager.shared.settings.enhancedCleanupPreference == .undecided else {
+            return
+        }
+
+        Task { @MainActor in
+            try? await Task.sleep(nanoseconds: 800_000_000)
+            guard SettingsManager.shared.settings.enhancedCleanupPreference == .undecided else { return }
+
+            let alert = NSAlert()
+            alert.messageText = "Enable Enhanced Local Cleanup?"
+            alert.informativeText = """
+            Yapper can download a local language model to improve punctuation, casing, and cleanup for longer dictations. The model runs on your Mac and is about \(LocalModelManager.modelDisplaySize).
+
+            Dictation still works without it, and you can add or remove it later in Settings.
+            """
+            alert.alertStyle = .informational
+            alert.addButton(withTitle: "Download Model")
+            alert.addButton(withTitle: "Not Now")
+
+            NSApp.activate(ignoringOtherApps: true)
+            let response = alert.runModal()
+            if response == .alertFirstButtonReturn {
+                LocalModelManager.shared.downloadModel()
+            } else {
+                LocalModelManager.shared.markDeclined()
+            }
         }
     }
 

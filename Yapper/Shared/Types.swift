@@ -150,6 +150,12 @@ enum InsertionMethod: String, Codable, CaseIterable, Sendable {
     case clipboard
 }
 
+enum EnhancedCleanupPreference: String, Codable, Sendable {
+    case undecided
+    case enabled
+    case declined
+}
+
 // MARK: - Settings
 
 struct Settings: Codable, Sendable {
@@ -161,6 +167,7 @@ struct Settings: Codable, Sendable {
     var selectedAudioDeviceId: String? = nil
     var cleanupEnabled: Bool = true
     var modelCleanupWordThreshold: Int = 10
+    var enhancedCleanupPreference: EnhancedCleanupPreference = .undecided
 
     static let `default` = Settings()
 }

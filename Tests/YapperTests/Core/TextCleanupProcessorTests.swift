@@ -11,7 +11,7 @@ final class TextCleanupProcessorTests: XCTestCase {
     }
 
     func testLlamaCleanupReportsMissingBundledResources() async {
-        let sut = LlamaCppTextCleanupProcessor(executableURL: nil, modelURL: nil)
+        let sut = LlamaCppTextCleanupProcessor(executableURL: nil, modelURL: nil, modelURLProvider: nil)
 
         do {
             _ = try await sut.clean(text: "hello")
@@ -25,7 +25,7 @@ final class TextCleanupProcessorTests: XCTestCase {
 
     func testFallbackCleanupUsesHeuristicWhenPrimaryUnavailable() async throws {
         let sut = FallbackTextCleanupProcessor(
-            primary: LlamaCppTextCleanupProcessor(executableURL: nil, modelURL: nil),
+            primary: LlamaCppTextCleanupProcessor(executableURL: nil, modelURL: nil, modelURLProvider: nil),
             fallback: HeuristicTextCleanupProcessor()
         )
 
