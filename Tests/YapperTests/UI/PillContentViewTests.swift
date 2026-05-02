@@ -1,7 +1,27 @@
+import AppKit
 import XCTest
 @testable import Yapper
 
 final class PillContentViewTests: XCTestCase {
+    @MainActor
+    func testPreferredHeightMatchesScaledFigmaMetric() {
+        XCTAssertEqual(PillContentView.preferredHeight, 24, accuracy: 0.001)
+    }
+
+    @MainActor
+    func testPreferredWidthUsesScaledFigmaTextAndMargins() {
+        let text = "the brown dog jumped"
+        let scaledFontSize = 17.0 * (2.0 / 3.0)
+        let scaledHorizontalPadding = 20.0 * (2.0 / 3.0)
+        let font = NSFont.systemFont(ofSize: scaledFontSize, weight: .medium)
+        let measuredTextWidth = ceil((text as NSString).size(withAttributes: [.font: font]).width)
+        let expectedWidth = measuredTextWidth + (scaledHorizontalPadding * 2.0)
+
+        let width = PillContentView.preferredWidth(for: .listening, partialTranscript: text)
+
+        XCTAssertEqual(width, expectedWidth, accuracy: 0.001)
+    }
+
     @MainActor
     func testPreferredWidthForShortTranscriptIsContentDriven() {
         let width = PillContentView.preferredWidth(for: .listening, partialTranscript: "hello there")

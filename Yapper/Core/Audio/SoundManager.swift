@@ -6,7 +6,6 @@ enum SoundEffect {
 
 final class SoundManager: @unchecked Sendable {
     static let shared = SoundManager()
-    private let projectDir = FileManager.default.currentDirectoryPath
     private let systemSoundDir = "/System/Library/Sounds/"
     
     private init() {}
@@ -16,29 +15,32 @@ final class SoundManager: @unchecked Sendable {
             let process = Process()
             process.executableURL = URL(fileURLWithPath: "/usr/bin/afplay")
             
-            var soundPath = ""
-            
-            switch effect {
-            case .recordingStart:
-                soundPath = "\(self.projectDir)/start.mp3"
-            case .recordingStop, .processingComplete:
-                soundPath = "\(self.projectDir)/success.mp3"
-            case .error:
-                soundPath = self.systemSoundDir + "Glass.aiff"
-            }
-            
-            // Fallback to system sounds if custom not found
-            if !FileManager.default.fileExists(atPath: soundPath) {
-                if effect == .error {
-                    soundPath = self.systemSoundDir + "Glass.aiff"
-                } else {
-                    soundPath = self.systemSoundDir + "Pop.aiff"
-                }
-            }
-            
-            process.arguments = [soundPath]
+            process.arguments = [self.soundURL(for: effect).path]
             try? process.run()
             process.waitUntilExit()
         }
+    }
+
+    private func soundURL(for effect: SoundEffect) -> URL {
+        switch effect {
+        case .recordingStart:
+            return bundledSound(named: "start") ?? systemSound(named: "Pop")
+        case .recordingStop, .processingComplete:
+            return bundledSound(named: "success") ?? systemSound(named: "Pop")
+        case .error:
+            return systemSound(named: "Glass")
+        }
+    }
+
+    private func bundledSound(named name: String) -> URL? {
+        Bundle.module.url(
+            forResource: name,
+            withExtension: "mp3",
+            subdirectory: "Sounds"
+        )
+    }
+
+    private func systemSound(named name: String) -> URL {
+        URL(fileURLWithPath: systemSoundDir).appendingPathComponent("\(name).aiff")
     }
 }

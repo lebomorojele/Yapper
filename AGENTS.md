@@ -51,20 +51,27 @@ Hotkeys don't work when running via Xcode debugger or shell because they run in 
 ## Project Structure
 
 - `Yapper/App/AppDelegate.swift` - Main app logic, hotkey handling, menu bar
-- `Yapper/App/AppRuntimeCoordinator.swift` - Runtime orchestration, permissions, hotkey state, session lifecycle
-- `Yapper/App/HistoryWindowController.swift` - Shared transcript history window
+- `Yapper/App/AppRuntimeCoordinator.swift` - Runtime orchestration, permissions, hotkey state, dictation lifecycle
 - `Yapper/App/SettingsWindowController.swift` - Preferences window
-- `Yapper/Core/History/HistoryStore.swift` - Persistent shared history store and transcript export
-- `Yapper/Core/Audio/SoundManager.swift` - Sound playback (start.mp3, success.mp3, fail.mp3)
+- `Yapper/Core/Audio/SoundManager.swift` - Sound playback (start.mp3, success.mp3, system error fallback)
+- `Yapper/Core/TextCleanup/TextCleanupProcessor.swift` - Heuristic and local llama.cpp transcript cleanup
 - `Yapper/Features/Dictation/DictationController.swift` - Recording/transcription session controller
-- `Yapper/UI/FloatingPanel/PillContentView.swift` - Recording states, Smart Options UI
-- `Yapper/UI/History/HistoryView.swift` - Shared dictation and meeting history UI
-- `Yapper/UI/Settings/SettingsView.swift` - Preferences view (GENERAL, AUDIO, MEETING, AI & KEYS, KEYBOARD, ABOUT)
+- `Yapper/LocalInference/` - Bundled llama.cpp binaries and cleanup GGUF model
+- `Yapper/UI/FloatingPanel/PillContentView.swift` - Recording, processing, inserted/copied, canceled, and failed states
+- `Yapper/UI/Settings/SettingsView.swift` - Preferences view for insertion, audio, keyboard, local cleanup, and about
 
 ## Features
 
-- **Hotkeys:** Single tap (start/stop), double tap (meeting mode), hold (continuous)
-- **Sound effects:** start.mp3 on recording start, success.mp3 on completion, fail.mp3 on error
-- **Smart Options:** Slack, Chat, Email, Prompt, or keep original
-- **History:** Shared transcript history for dictation and meeting sessions
-- **Preferences:** Native Tahoe-style preferences with live audio metering and provider-aware AI settings
+- **Hotkey:** Globe/Fn single tap toggles dictation start/stop
+- **Sound effects:** start.mp3 on listening start, success.mp3 on inserted/copied completion, system fallback on error
+- **Local cleanup:** Short transcripts use deterministic punctuation/casing; longer transcripts can use the bundled local GGUF model
+- **Text insertion:** Accessibility insertion by default, with clipboard fallback mode available in settings
+- **Preferences:** Native Tahoe-style preferences with live audio metering, insertion controls, keyboard notes, and local cleanup settings
+
+## Removed in v2
+
+- Meeting mode
+- Smart mode picker and transforms
+- Cloud AI provider settings
+- Transcript history window and export
+- Design catalog/demo surfaces

@@ -8,6 +8,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var runtimeStatusItem: NSMenuItem?
     private var floatingPanel: FloatingPanel?
     private var processingIndicatorTask: Task<Void, Never>?
+    private var previousSoundState: RecordingState?
 
     private let runtime = AppRuntimeCoordinator(
         dictationController: DictationController(
@@ -103,6 +104,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         updateStatusButton(for: state)
 
         let displayState = state.displayRecordingState
+        playSoundIfNeeded(for: displayState)
         if displayState == .idle || displayState == .loading {
             processingIndicatorTask?.cancel()
             processingIndicatorTask = nil
@@ -210,6 +212,22 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             audioMeter: audioMeter
         )
         floatingPanel?.showAtTopCenter()
+    }
+
+    private func playSoundIfNeeded(for displayState: RecordingState) {
+        defer { previousSoundState = displayState }
+        guard previousSoundState != displayState else { return }
+
+        switch displayState {
+        case .listening:
+            SoundManager.shared.play(.recordingStart)
+        case .inserted, .copied:
+            SoundManager.shared.play(.processingComplete)
+        case .failed:
+            SoundManager.shared.play(.error)
+        case .idle, .loading, .processing, .cancelled:
+            break
+        }
     }
 
     private func makeStatusBarImage() -> NSImage? {

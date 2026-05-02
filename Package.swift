@@ -25,7 +25,8 @@ let package = Package(
             resources: [
                 .process("Assets.xcassets"),
                 .copy("LocalInference"),
-                .copy("MenuBarResources")
+                .copy("MenuBarResources"),
+                .copy("Sounds")
             ]
         ),
         .testTarget(

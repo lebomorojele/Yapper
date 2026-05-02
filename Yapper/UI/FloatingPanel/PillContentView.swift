@@ -8,12 +8,15 @@ private enum PebbleMode: Equatable {
 }
 
 private enum PebbleMetrics {
+    private static let designScale: CGFloat = 2.0 / 3.0
     static let idleWidth: CGFloat = 72
     static let maxContentWidth: CGFloat = 320
-    static let height: CGFloat = 24
-    static let horizontalPadding: CGFloat = 12
-    static let verticalPadding: CGFloat = 4
-    static let fontSize: CGFloat = 12
+    static let height: CGFloat = 36 * designScale
+    static let horizontalPadding: CGFloat = 20 * designScale
+    static let verticalPadding: CGFloat = 6 * designScale
+    static let fontSize: CGFloat = 17 * designScale
+    static let fontWeight: Font.Weight = .medium
+    static let nsFontWeight: NSFont.Weight = .medium
 }
 
 struct PillContentView: View {
@@ -87,7 +90,7 @@ struct PillContentView: View {
     }
 
     private static func widthForText(_ text: String) -> CGFloat {
-        let font = NSFont.systemFont(ofSize: PebbleMetrics.fontSize, weight: .regular)
+        let font = NSFont.systemFont(ofSize: PebbleMetrics.fontSize, weight: PebbleMetrics.nsFontWeight)
         let measuredTextWidth = ceil((text as NSString).size(withAttributes: [.font: font]).width)
         let paddedWidth = measuredTextWidth + (PebbleMetrics.horizontalPadding * 2)
         return min(max(PebbleMetrics.idleWidth, paddedWidth), PebbleMetrics.maxContentWidth)
@@ -130,7 +133,7 @@ private struct DictationPebble: View {
             if mode == .speaking {
                 if liveTranscriptWords.isEmpty {
                     Text(statusPhrase)
-                        .font(.system(size: PebbleMetrics.fontSize, weight: .regular))
+                        .font(.system(size: PebbleMetrics.fontSize, weight: PebbleMetrics.fontWeight))
                         .foregroundStyle(foregroundColor)
                         .lineLimit(1)
                         .truncationMode(.tail)
@@ -228,7 +231,7 @@ private struct SmoothTranscriptStrip: View {
                     )
             }
         }
-        .font(.system(size: PebbleMetrics.fontSize, weight: .regular))
+        .font(.system(size: PebbleMetrics.fontSize, weight: PebbleMetrics.fontWeight))
         .foregroundStyle(foregroundColor)
         .lineLimit(1)
         .frame(maxWidth: .infinity, alignment: .center)
