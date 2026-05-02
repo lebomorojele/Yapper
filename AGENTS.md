@@ -2,15 +2,21 @@
 
 ## Setup
 
+### App workspace
+
+The macOS app lives in `app/`. Run SwiftPM commands from that directory.
+
 ### Build the app
 
 ```bash
+cd app
 swift build -c release
 ```
 
 ### Run unit and integration tests
 
 ```bash
+cd app
 swift test
 ```
 
@@ -24,6 +30,7 @@ Run them from the Xcode project or an Xcode-aware destination so they have a rea
 **IMPORTANT:** Run the binary directly, NOT via Xcode debugger or shell:
 
 ```bash
+cd app
 nohup ./.build/release/Yapper > /dev/null 2>&1 &
 ```
 
@@ -36,29 +43,55 @@ Hotkeys don't work when running via Xcode debugger or shell because they run in 
 ### Hotkeys not working
 
 - **Cause:** Running via Xcode debugger or shell
-- **Fix:** Run the binary directly: `nohup ./.build/release/Yapper > /dev/null 2>&1 &`
+- **Fix:** Run the binary directly from `app/`: `nohup ./.build/release/Yapper > /dev/null 2>&1 &`
 
 ### Code changes not appearing
 
 - **Cause:** Build caching
-- **Fix:** Clean rebuild: `rm -rf .build && swift build -c release`
+- **Fix:** Clean rebuild from `app/`: `rm -rf .build && swift build -c release`
 
 ### Old code showing in UI
 
 - **Cause:** Build cache not invalidated
-- **Fix:** `rm -rf .build` before rebuilding
+- **Fix:** `rm -rf app/.build` before rebuilding
+
+## Distribution
+
+### Build a local DMG
+
+```bash
+ALLOW_PLACEHOLDER_SPARKLE_KEY=1 app/scripts/package-dmg.sh
+```
+
+### Build a release DMG
+
+```bash
+export SPARKLE_PUBLIC_ED_KEY="..."
+export DEVELOPER_ID_APPLICATION="Developer ID Application: Your Name (TEAMID)"
+export NOTARY_PROFILE="yapper-notary"
+app/scripts/package-dmg.sh
+```
+
+### Generate a Sparkle appcast
+
+```bash
+export DOWNLOAD_URL_PREFIX="https://yapper.app/downloads"
+app/scripts/generate-appcast.sh
+```
 
 ## Project Structure
 
-- `Yapper/App/AppDelegate.swift` - Main app logic, hotkey handling, menu bar
-- `Yapper/App/AppRuntimeCoordinator.swift` - Runtime orchestration, permissions, hotkey state, dictation lifecycle
-- `Yapper/App/SettingsWindowController.swift` - Preferences window
-- `Yapper/Core/Audio/SoundManager.swift` - Sound playback (start.mp3, success.mp3, system error fallback)
-- `Yapper/Core/TextCleanup/TextCleanupProcessor.swift` - Heuristic and local llama.cpp transcript cleanup
-- `Yapper/Features/Dictation/DictationController.swift` - Recording/transcription session controller
-- `Yapper/LocalInference/` - Bundled llama.cpp binaries for optional enhanced cleanup
-- `Yapper/UI/FloatingPanel/PillContentView.swift` - Recording, processing, inserted/copied, canceled, and failed states
-- `Yapper/UI/Settings/SettingsView.swift` - Preferences view for insertion, audio, keyboard, local cleanup, and about
+- `app/Yapper/App/AppDelegate.swift` - Main app logic, hotkey handling, menu bar
+- `app/Yapper/App/AppRuntimeCoordinator.swift` - Runtime orchestration, permissions, hotkey state, dictation lifecycle
+- `app/Yapper/App/SparkleUpdateController.swift` - Sparkle updater lifecycle and manual update checks
+- `app/Yapper/App/SettingsWindowController.swift` - Preferences window
+- `app/Yapper/Core/Audio/SoundManager.swift` - Sound playback (start.mp3, success.mp3, system error fallback)
+- `app/Yapper/Core/TextCleanup/TextCleanupProcessor.swift` - Heuristic and local llama.cpp transcript cleanup
+- `app/Yapper/Features/Dictation/DictationController.swift` - Recording/transcription session controller
+- `app/Yapper/LocalInference/` - Bundled llama.cpp binaries for optional enhanced cleanup
+- `app/Yapper/UI/FloatingPanel/PillContentView.swift` - Recording, processing, inserted/copied, canceled, and failed states
+- `app/Yapper/UI/Settings/SettingsView.swift` - Preferences view for insertion, audio, keyboard, local cleanup, and about
+- `website/` - Launch website
 
 ## Features
 

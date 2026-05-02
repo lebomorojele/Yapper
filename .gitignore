@@ -1,1 +1,17 @@
+.DS_Store
+
+# SwiftPM / app release output
 .build
+app/.build
+app/dist
+
+# Website output and dependencies
+website/.next
+website/out
+website/node_modules
+website/.vercel
+
+# Local environment
+.env
+.env.*
+!.env.example
