@@ -1,0 +1,14 @@
+<?xml version="1.0" standalone="yes"?>
+<rss xmlns:sparkle="http://www.andymatuschak.org/xml-namespaces/sparkle" version="2.0">
+    <channel>
+        <title>Yapper</title>
+        <item>
+            <title>0.1.0</title>
+            <pubDate>Sun, 03 May 2026 18:28:39 +0200</pubDate>
+            <sparkle:version>1</sparkle:version>
+            <sparkle:shortVersionString>0.1.0</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>15.0</sparkle:minimumSystemVersion>
+            <enclosure url="https://yapper.party/Yapper-0.1.0.dmg" length="15875700" type="application/octet-stream"/>
+        </item>
+    </channel>
+</rss>

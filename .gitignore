@@ -19,6 +19,8 @@ website/.vercel/
 # Release artifacts and downloaded local models
 *.dmg
 *.dmg.sha256
+!website/public/downloads/*.dmg
+!website/public/downloads/*.dmg.sha256
 *.gguf
 
 # Local environment
