@@ -1,15 +1,25 @@
 .DS_Store
 
 # SwiftPM / app release output
-.build
-app/.build
-app/dist
+.build/
+**/.build/
+app/dist/
+**/*.dSYM/
 
 # Website output and dependencies
-website/.next
-website/out
-website/node_modules
-website/.vercel
+node_modules/
+**/node_modules/
+.next/
+**/.next/
+out/
+**/out/
+dist/
+website/.vercel/
+
+# Release artifacts and downloaded local models
+*.dmg
+*.dmg.sha256
+*.gguf
 
 # Local environment
 .env
