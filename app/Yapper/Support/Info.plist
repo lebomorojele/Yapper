@@ -21,7 +21,7 @@
     <key>NSHumanReadableCopyright</key>
     <string>Copyright © 2026 Yapper. All rights reserved.</string>
     <key>SUFeedURL</key>
-    <string>https://yapper.app/appcast.xml</string>
+    <string>https://yapper.party/appcast.xml</string>
     <key>SUPublicEDKey</key>
     <string>__SPARKLE_PUBLIC_ED_KEY__</string>
     <key>SUAllowsAutomaticUpdates</key>
