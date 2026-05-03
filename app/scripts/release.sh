@@ -16,6 +16,10 @@ set -euo pipefail
 #   ./app/scripts/release.sh minor    — bumps minor (0.1.0 → 0.2.0) then releases
 #   ./app/scripts/release.sh major    — bumps major (0.1.0 → 1.0.0) then releases
 
+# gh CLI prefers its own stored credentials. If a GITHUB_TOKEN env var is set
+# (e.g. by the Hermes agent tool), unset it here so gh uses your stored auth.
+unset GITHUB_TOKEN
+
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 APP_ROOT="$SCRIPT_DIR/.."
 REPO_ROOT="$(cd "$APP_ROOT/.." && pwd)"
