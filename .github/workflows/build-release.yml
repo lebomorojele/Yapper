@@ -12,7 +12,9 @@ concurrency:
 jobs:
   build:
     name: Build macOS DMG + Appcast
-    runs-on: macos-latest
+    runs-on: macos-15-arm64
+    permissions:
+      contents: write
     defaults:
       run:
         working-directory: app
