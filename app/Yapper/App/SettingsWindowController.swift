@@ -6,22 +6,17 @@ final class SettingsWindowController: NSWindowController {
 
     private init() {
         let view = SettingsView()
-        let hostingController = NSHostingController(rootView: view)
         
         let window = NSWindow(
-            contentRect: NSRect(x: 0, y: 0, width: 760, height: 560),
-            styleMask: [.titled, .closable, .resizable, .miniaturizable],
+            contentRect: NSRect(x: 0, y: 0, width: 700, height: 700),
+            styleMask: [.titled, .fullSizeContentView, .closable, .miniaturizable],
             backing: .buffered,
             defer: false
         )
-        window.minSize = NSSize(width: 760, height: 560)
         window.title = "Settings"
         window.center()
-        window.contentViewController = hostingController
+        window.contentView = NSHostingView(rootView: view)
         window.isReleasedWhenClosed = false
-        window.toolbar = NSToolbar(identifier: "SettingsWindowToolbar")
-        window.toolbar?.displayMode = .iconOnly
-        window.toolbar?.isVisible = true
         window.toolbarStyle = .unified
         window.titleVisibility = .visible
         window.titlebarSeparatorStyle = .automatic

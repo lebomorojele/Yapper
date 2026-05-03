@@ -3,7 +3,7 @@
 <plist version="1.0">
 <dict>
     <key>CFBundleIdentifier</key>
-    <string>com.yapper.app</string>
+    <string>com.yapper.party</string>
     <key>CFBundleName</key>
     <string>Yapper</string>
     <key>CFBundleDisplayName</key>
@@ -23,7 +23,7 @@
     <key>SUFeedURL</key>
     <string>https://yapper.party/appcast.xml</string>
     <key>SUPublicEDKey</key>
-    <string>__SPARKLE_PUBLIC_ED_KEY__</string>
+    <string>EVUQdVdcA1eqy8ZjlZHa3THlcmfO2aCn23167CzsdJg=</string>
     <key>SUAllowsAutomaticUpdates</key>
     <true/>
 </dict>

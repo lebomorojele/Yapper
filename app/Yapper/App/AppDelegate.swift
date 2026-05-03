@@ -5,9 +5,6 @@ import Combine
 final class AppDelegate: NSObject, NSApplicationDelegate {
     private static let processingIndicatorDelay: Duration = .milliseconds(180)
     private static let enhancedCleanupPromptDelay: Duration = .milliseconds(1_200)
-    private static let idleStatusIconTint = NSColor(name: NSColor.Name("YapperIdleStatusIconTint")) { appearance in
-        appearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua ? .white : .black
-    }
 
     private var statusItem: NSStatusItem?
     private var runtimeStatusItem: NSMenuItem?
@@ -57,8 +54,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             button.imagePosition = .imageOnly
             button.imageScaling = .scaleProportionallyDown
             button.image = makeStatusBarImage()
-            button.image?.isTemplate = true
-            button.contentTintColor = Self.idleStatusIconTint
+            button.image?.isTemplate = false
+            button.contentTintColor = nil
         }
 
         let menu = NSMenu()
@@ -216,26 +213,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private func updateStatusButton(for state: AppRuntimeState) {
         guard let button = statusItem?.button else { return }
         button.toolTip = statusLine(for: state)
-
-        switch state.recordingPhase {
-        case .recording:
-            button.contentTintColor = .systemRed
-        case .processing:
-            button.contentTintColor = .controlAccentColor
-        case .completed:
-            button.contentTintColor = .systemGreen
-        case .cancelled, .failed:
-            button.contentTintColor = .systemOrange
-        case .idle, .loading:
-            switch LocalModelManager.shared.status {
-            case .downloading, .verifying:
-                button.contentTintColor = .controlAccentColor
-            case .failed:
-                button.contentTintColor = .systemOrange
-            case .notInstalled, .ready:
-                button.contentTintColor = Self.idleStatusIconTint
-            }
-        }
+        button.contentTintColor = nil
     }
 
     private func scheduleProcessingIndicator(for state: AppRuntimeState) {
@@ -357,8 +335,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
 
         guard !image.representations.isEmpty else { return nil }
-        image.isTemplate = true
-        return image
+
+        let whiteImage = NSImage(size: image.size)
+        whiteImage.lockFocus()
+        let imageRect = NSRect(origin: .zero, size: image.size)
+        image.draw(in: imageRect, from: .zero, operation: .sourceOver, fraction: 1)
+        NSColor.white.setFill()
+        imageRect.fill(using: .sourceIn)
+        whiteImage.unlockFocus()
+        whiteImage.isTemplate = false
+        return whiteImage
     }
 
     @objc private func toggleRecording() {

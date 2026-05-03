@@ -87,21 +87,27 @@ final class PreferencesViewModel: ObservableObject {
 
 struct SettingsView: View {
     @StateObject private var model = PreferencesViewModel()
+    @State private var columnVisibility = NavigationSplitViewVisibility.automatic
 
     var body: some View {
-        NavigationSplitView {
-            List(PreferencesPane.allCases, selection: $model.selectedPane) { pane in
-                Label(pane.rawValue, systemImage: pane.icon)
+        NavigationSplitView(columnVisibility: $columnVisibility) {
+            List(selection: $model.selectedPane) {
+                ForEach(PreferencesPane.allCases) { pane in
+                    Button {
+                        model.selectedPane = pane
+                    } label: {
+                        Label(pane.rawValue, systemImage: pane.icon)
+                    }
+                    .buttonStyle(.plain)
                     .tag(pane)
                     .accessibilityIdentifier("settings.sidebar.\(pane.rawValue.lowercased())")
+                }
             }
-            .listStyle(.sidebar)
             .accessibilityIdentifier("settings.sidebar")
-            .navigationSplitViewColumnWidth(min: 150, ideal: 170, max: 200)
         } detail: {
             detailPane
                 .frame(minWidth: 480, maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-                .background(WindowTitleUpdater(title: model.selectedPane.rawValue))
+                .navigationTitle(model.selectedPane.rawValue)
         }
         .frame(minWidth: 680, minHeight: 440)
         .accessibilityIdentifier("settings.root")
@@ -540,23 +546,5 @@ private struct ShortcutBadge: View {
             .padding(.horizontal, 8)
             .padding(.vertical, 3)
             .background(.quaternary, in: RoundedRectangle(cornerRadius: 6, style: .continuous))
-    }
-}
-
-private struct WindowTitleUpdater: NSViewRepresentable {
-    let title: String
-
-    func makeNSView(context: Context) -> NSView {
-        let view = NSView()
-        DispatchQueue.main.async {
-            view.window?.title = title
-        }
-        return view
-    }
-
-    func updateNSView(_ nsView: NSView, context: Context) {
-        DispatchQueue.main.async {
-            nsView.window?.title = title
-        }
     }
 }
