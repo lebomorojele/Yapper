@@ -85,16 +85,14 @@ echo "📀 Packaging DMG..."
 ALLOW_PLACEHOLDER_SPARKLE_KEY=1 ./scripts/package-dmg.sh
 
 echo ""
-echo "🚀 Creating GitHub Release..."
+echo "🚀 Building GitHub Release (for reference/changelog)..."
 cd "$REPO_ROOT"
 TAG="v$VERSION"
 
 if gh release view "$TAG" --repo lebomorojele/Yapper &>/dev/null; then
-  echo "Release $TAG already exists, uploading DMG..."
-  gh release upload "$TAG" "app/dist/Yapper-$VERSION.dmg" "app/dist/Yapper-$VERSION.dmg.sha256" \
-    --repo lebomorojele/Yapper --clobber
+  echo "Release $TAG already exists, skipping."
 else
-  gh release create "$TAG" "app/dist/Yapper-$VERSION.dmg" "app/dist/Yapper-$VERSION.dmg.sha256" \
+  gh release create "$TAG" \
     --title "Yapper $VERSION" \
     --notes "Release Yapper $VERSION" \
     --repo lebomorojele/Yapper
@@ -103,18 +101,22 @@ fi
 
 echo ""
 echo "📝 Generating signed appcast..."
-DOWNLOAD_URL_PREFIX="https://github.com/lebomorojele/Yapper/releases/download/v$VERSION" \
-  cd "$APP_ROOT" && ./scripts/generate-appcast.sh
+cd "$APP_ROOT"
+DOWNLOAD_URL_PREFIX="https://yapper.party/downloads" ./scripts/generate-appcast.sh
 
 echo ""
-echo "📋 Copying appcast to website..."
+echo "📋 Copying artifacts to website..."
+mkdir -p "$REPO_ROOT/website/public/downloads"
+cp "$APP_ROOT/dist/Yapper-$VERSION.dmg" "$REPO_ROOT/website/public/downloads/Yapper-$VERSION.dmg"
+cp "$APP_ROOT/dist/Yapper-$VERSION.dmg.sha256" "$REPO_ROOT/website/public/downloads/Yapper-$VERSION.dmg.sha256"
+cp "$APP_ROOT/dist/Yapper-$VERSION.dmg" "$REPO_ROOT/website/public/downloads/Yapper-latest.dmg"
 cp "$APP_ROOT/dist/sparkle/appcast.xml" "$REPO_ROOT/website/public/appcast.xml"
 
 echo ""
-echo "📤 Committing and pushing appcast..."
+echo "📤 Committing and pushing..."
 cd "$REPO_ROOT"
-git add website/public/appcast.xml
-git commit -m "chore: update appcast for v$VERSION"
+git add website/public/appcast.xml website/public/downloads/
+git commit -m "chore: release v$VERSION"
 git push
 
 echo ""
