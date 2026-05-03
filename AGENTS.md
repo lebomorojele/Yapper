@@ -108,3 +108,58 @@ app/scripts/generate-appcast.sh
 - Cloud AI provider settings
 - Transcript history window and export
 - Design catalog/demo surfaces
+
+## Text Processing Pipeline (Current)
+
+```
+Parakeet STT → HeuristicCleanup (always) → LlamaCpp + Qwen 1.5B GGUF (~1.1 GB) [≥10 words] → Insertion
+```
+
+- **HeuristicTextCleanupProcessor** (`Core/TextCleanup/TextCleanupProcessor.swift:20`): Fast path — trims, collapses spaces, capitalizes first letter, appends period. Always runs first.
+- **LlamaCppTextCleanupProcessor** (`Core/TextCleanup/TextCleanupProcessor.swift:43`): Optional enhanced cleanup. Shells out to bundled `llama-completion`/`llama-cli` with Qwen2.5-1.5B-Instruct GGUF model. 10s timeout. JSON response parsing. Only runs when transcript ≥ `modelCleanupWordThreshold` (default 10 words).
+- **FallbackTextCleanupProcessor** (`Core/TextCleanup/TextCleanupProcessor.swift:182`): Tries LlamaCpp first, falls back to Heuristic on any error.
+- **LocalModelManager** (`Core/TextCleanup/LocalModelManager.swift`): Downloads Qwen2.5 1.5B Instruct Q4_K_M (~1.12 GB) from HuggingFace. SHA verification. Stored at `~/Library/Application Support/Yapper/LocalInference/cleanup-model.gguf`.
+- **DictationController** (`Features/Dictation/DictationController.swift:134`): Orchestrates the pipeline — heuristic → threshold check → model cleanup → insertion.
+
+## Plan: Replace Qwen 1.5B GGUF with sub-100MB Grammar Correction
+
+### Goal
+Replace the 1.12 GB Qwen2.5 1.5B GGUF model with a dedicated grammar correction model under 100MB for faster, lighter on-device cleanup.
+
+### Target Architecture
+```
+Parakeet STT → HeuristicCleanup (always) → ONNX flan-t5-small INT8 (~50 MB) [≥10 words] → Insertion
+```
+
+### Candidate Models
+| Model | Size | Approach | Pros | Cons |
+|---|---|---|---|---|
+| **flan-t5-small ONNX INT8** | ~50 MB | Seq2seq, fine-tuned GEC variants exist | Fast CPU, purpose-built, tiny | Needs ONNX Runtime dep |
+| **GECToR ONNX INT8** | ~80 MB | Token-tagging (not seq2seq) | Even faster, GEC-native | Slightly larger, less flexible |
+| **SmolLM2-135M GGUF Q4_K_M** | ~80 MB | General LLM | Reuses llama.cpp infra, flexible | Slower than GEC models |
+| **LanguageTool** | ~200 MB JAR | Rule-based, no ML | Zero model weights, covers STT errors well | Not neural, larger JAR |
+
+### Recommended: flan-t5-small ONNX INT8
+Best balance of size (~50 MB), speed (CPU), and purpose-fit for STT cleanup (homophones, punctuation, agreement).
+
+### Implementation Steps
+
+| Step | Files | Description |
+|---|---|---|
+| 1. Add ONNX dep | `Package.swift` | Add `onnxruntime-swift` package |
+| 2. Create ONNX processor | `Core/TextCleanup/ONNXTextCleanupProcessor.swift` | New `TextCleanupProcessing` impl wrapping ONNX inference |
+| 3. Swap model download | `Core/TextCleanup/LocalModelManager.swift` | Change URL, display name, size, SHA to flan-t5-small ONNX |
+| 4. Update error handling | `Core/TextCleanup/TextCleanupProcessor.swift` | Add ONNX-specific error cases |
+| 5. Remove llama.cpp | `LocalInference/` | Delete bundled llama binaries (no longer needed) |
+| 6. Remove LlamaCpp class | `Core/TextCleanup/TextCleanupProcessor.swift` | Delete `LlamaCppTextCleanupProcessor` |
+| 7. Update Fallback default | `Core/TextCleanup/TextCleanupProcessor.swift` | Point `FallbackTextCleanupProcessor` default to ONNX |
+| 8. Update settings UI | `UI/Settings/SettingsView.swift` | Update labels from "Qwen2.5 1.5B" to flan-t5-small |
+| 9. Add tests | `Tests/YapperTests/Core/TextCleanupProcessorTests.swift` | ONNX inference tests + fallback tests |
+| 10. Remove old model | App launch cleanup | Detect/offer to remove stale Qwen GGUF if present |
+
+### Key Design Decisions
+- **Protocol remains `TextCleanupProcessing`** — no changes to `DictationController` or `AppRuntimeCoordinator`
+- **ONNX runs in-process** (vs llama.cpp subprocess) — removes subprocess overhead, faster, simpler
+- **Download/verification pattern stays** from `LocalModelManager` — just swap URL and SHA
+- **In-process ONNX means no bundled binaries** — `LocalInference/` resource directory goes away entirely
+- **Threshold logic unchanged** — heuristic always runs first, model only for ≥N words
