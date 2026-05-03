@@ -8,43 +8,48 @@ set -euo pipefail
 #   - macOS with Xcode installed
 #   - gh CLI authenticated (gh auth status)
 #   - Sparkle private key in macOS keychain (run generate-sparkle-key.sh once)
-#   - Clean git status (no uncommitted changes)
 #
 # Usage:
-#   ./app/scripts/release.sh          — releases current version
-#   ./app/scripts/release.sh patch    — bumps patch (0.1.0 → 0.1.1) then releases
-#   ./app/scripts/release.sh minor    — bumps minor (0.1.0 → 0.2.0) then releases
-#   ./app/scripts/release.sh major    — bumps major (0.1.0 → 1.0.0) then releases
-
-# gh CLI prefers its own stored credentials. If a GITHUB_TOKEN env var is set
-# (e.g. by the Hermes agent tool), unset it here so gh uses your stored auth.
-unset GITHUB_TOKEN
+#   ./app/scripts/release.sh             — build, copy DMG to website, commit, push
+#   ./app/scripts/release.sh --release   — same + GitHub Release tagging (requires clean git)
+#   ./app/scripts/release.sh --release patch   — bump + release
+#   ./app/scripts/release.sh --release minor   — bump + release
+#   ./app/scripts/release.sh --release major   — bump + release
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 APP_ROOT="$SCRIPT_DIR/.."
 REPO_ROOT="$(cd "$APP_ROOT/.." && pwd)"
 INFO_PLIST="$APP_ROOT/Yapper/Support/Info.plist"
 
-BUMP="${1:-}"
+WEBSITE_DMG_DIR="$REPO_ROOT/website/public/downloads"
+WEBSITE_DMG_PATH="$WEBSITE_DMG_DIR/Yapper-latest.dmg"
 
-# Ensure we're in the repo root
+RELEASE_MODE=false
+BUMP="${2:-}"
+
+if [[ "${1:-}" == "--release" ]]; then
+  RELEASE_MODE=true
+  BUMP="${2:-}"
+
+  unset GITHUB_TOKEN
+
+  if ! git diff --quiet; then
+    echo "❌ Uncommitted changes. Commit or stash first."
+    exit 1
+  fi
+
+  if ! command -v gh &> /dev/null; then
+    echo "❌ gh CLI not found. Install it: brew install gh"
+    exit 1
+  fi
+
+  if ! gh auth status &> /dev/null; then
+    echo "❌ gh not authenticated. Run: gh auth login"
+    exit 1
+  fi
+fi
+
 cd "$REPO_ROOT"
-
-# Check prerequisites
-if ! git diff --quiet; then
-  echo "❌ Uncommitted changes. Commit or stash first."
-  exit 1
-fi
-
-if ! command -v gh &> /dev/null; then
-  echo "❌ gh CLI not found. Install it: brew install gh"
-  exit 1
-fi
-
-if ! gh auth status &> /dev/null; then
-  echo "❌ gh not authenticated. Run: gh auth login"
-  exit 1
-fi
 
 # Read current version
 VERSION=$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$INFO_PLIST")
@@ -52,8 +57,8 @@ BUILD_NUM=$(/usr/libexec/PlistBuddy -c 'Print :CFBundleVersion' "$INFO_PLIST")
 
 echo "📦 Yapper v$VERSION (build $BUILD_NUM)"
 
-# Bump version if requested
-if [[ -n "$BUMP" ]]; then
+# Bump version if requested (only in release mode)
+if [[ "$RELEASE_MODE" == true && -n "$BUMP" ]]; then
   IFS='.' read -r MAJOR MINOR PATCH <<< "$VERSION"
   case "$BUMP" in
     major) MAJOR=$((MAJOR + 1)); MINOR=0; PATCH=0 ;;
@@ -85,41 +90,51 @@ echo "📀 Packaging DMG..."
 ALLOW_PLACEHOLDER_SPARKLE_KEY=1 ./scripts/package-dmg.sh
 
 echo ""
-echo "🚀 Creating GitHub Release..."
-cd "$REPO_ROOT"
-TAG="v$VERSION"
-
-if gh release view "$TAG" --repo lebomorojele/Yapper &>/dev/null; then
-  echo "Release $TAG already exists, uploading DMG..."
-  gh release upload "$TAG" "app/dist/Yapper-$VERSION.dmg" "app/dist/Yapper-$VERSION.dmg.sha256" \
-    --repo lebomorojele/Yapper --clobber
-else
-  gh release create "$TAG" "app/dist/Yapper-$VERSION.dmg" "app/dist/Yapper-$VERSION.dmg.sha256" \
-    --title "Yapper $VERSION" \
-    --notes "Release Yapper $VERSION" \
-    --repo lebomorojele/Yapper
-  echo "✅ Release $TAG created"
-fi
-
-echo ""
 echo "📝 Generating signed appcast..."
-DOWNLOAD_URL_PREFIX="https://github.com/lebomorojele/Yapper/releases/download/v$VERSION" \
+DOWNLOAD_URL_PREFIX="https://yapper.party/downloads" \
   cd "$APP_ROOT" && ./scripts/generate-appcast.sh
 
 echo ""
-echo "📋 Copying appcast to website..."
+echo "📋 Copying DMG and appcast to website..."
+mkdir -p "$WEBSITE_DMG_DIR"
+cp "$APP_ROOT/dist/Yapper-$VERSION.dmg" "$WEBSITE_DMG_PATH"
 cp "$APP_ROOT/dist/sparkle/appcast.xml" "$REPO_ROOT/website/public/appcast.xml"
 
+if [[ "$RELEASE_MODE" == true ]]; then
+  echo ""
+  echo "🚀 Creating GitHub Release..."
+  cd "$REPO_ROOT"
+  TAG="v$VERSION"
+
+  DMG_PATH="app/dist/Yapper-$VERSION.dmg"
+  SHA_PATH="app/dist/Yapper-$VERSION.dmg.sha256"
+
+  if gh release view "$TAG" --repo lebomorojele/Yapper &>/dev/null; then
+    gh release upload "$TAG" "$DMG_PATH" "$SHA_PATH" \
+      --repo lebomorojele/Yapper --clobber
+  else
+    gh release create "$TAG" "$DMG_PATH" "$SHA_PATH" \
+      --title "Yapper $VERSION" \
+      --notes "Release Yapper $VERSION" \
+      --repo lebomorojele/Yapper
+    echo "✅ Release $TAG created"
+  fi
+fi
+
 echo ""
-echo "📤 Committing and pushing appcast..."
+echo "📤 Committing DMG and appcast to main..."
 cd "$REPO_ROOT"
-git add website/public/appcast.xml
-git commit -m "chore: update appcast for v$VERSION"
+git add website/public/downloads/Yapper-latest.dmg website/public/appcast.xml
+git commit -m "chore: update DMG and appcast for v$VERSION"
 git push
 
 echo ""
-echo "✅ Done! Yapper v$VERSION released."
-echo "   Release: https://github.com/lebomorojele/Yapper/releases/tag/v$VERSION"
+echo "✅ Done!"
+echo "   DMG:  https://yapper.party/downloads/Yapper-latest.dmg"
+echo "   DMGs are now committed to the repo — Coolify will auto-deploy"
+
+if [[ "$RELEASE_MODE" == true ]]; then
+  echo "   Release: https://github.com/lebomorojele/Yapper/releases/tag/v$VERSION"
+fi
+
 echo "   Appcast: https://yapper.party/appcast.xml"
-echo ""
-echo "   Coolify will auto-deploy the updated appcast."
