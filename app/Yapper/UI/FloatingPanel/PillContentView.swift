@@ -266,31 +266,26 @@ private struct PebbleGlassModifier: ViewModifier {
     var isActive = false
 
     func body(content: Content) -> some View {
-        if #available(macOS 26.0, *) {
-            content
-                .glassEffect(.regular.interactive(), in: Capsule())
-        } else {
-            content
-                .background(
-                    ZStack {
-                        Capsule(style: .continuous)
-                            .fill(.regularMaterial)
-                        Capsule(style: .continuous)
-                            .fill((isActive ? Color(red: 0.09, green: 0.75, blue: 0.73) : .white).opacity(isActive ? 0.18 : 0.58))
-                        LinearGradient(
-                            colors: [.white.opacity(0.72), .white.opacity(0.16)],
-                            startPoint: .top,
-                            endPoint: .bottom
-                        )
-                        .clipShape(Capsule(style: .continuous))
-                    }
-                )
-                .overlay {
+        content
+            .background(
+                ZStack {
                     Capsule(style: .continuous)
-                        .stroke(.white.opacity(0.55), lineWidth: 1)
+                        .fill(.regularMaterial)
+                    Capsule(style: .continuous)
+                        .fill((isActive ? Color(red: 0.09, green: 0.75, blue: 0.73) : .white).opacity(isActive ? 0.18 : 0.58))
+                    LinearGradient(
+                        colors: [.white.opacity(0.72), .white.opacity(0.16)],
+                        startPoint: .top,
+                        endPoint: .bottom
+                    )
+                    .clipShape(Capsule(style: .continuous))
                 }
-                .shadow(color: .black.opacity(0.12), radius: 14, y: 8)
-        }
+            )
+            .overlay {
+                Capsule(style: .continuous)
+                    .stroke(.white.opacity(0.55), lineWidth: 1)
+            }
+            .shadow(color: .black.opacity(0.12), radius: 14, y: 8)
     }
 }
 
