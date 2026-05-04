@@ -70,8 +70,20 @@ sync_with_upstream() {
   echo "🔄 Fetching latest $upstream..."
   git fetch --prune
 
-  echo "🔄 Rebasing onto $upstream..."
-  git pull --rebase
+  local_head="$(git rev-parse HEAD)"
+  remote_head="$(git rev-parse "$upstream")"
+
+  if [[ "$local_head" == "$remote_head" ]]; then
+    echo "✅ Branch is up to date with $upstream."
+  elif git merge-base --is-ancestor "$upstream" HEAD; then
+    echo "✅ Branch already contains $upstream; local commits are ahead."
+  elif git merge-base --is-ancestor HEAD "$upstream"; then
+    echo "🔄 Fast-forwarding to $upstream..."
+    git merge --ff-only "$upstream"
+  else
+    echo "🔄 Rebasing local commits onto $upstream..."
+    git rebase "$upstream"
+  fi
 }
 
 sync_with_upstream
