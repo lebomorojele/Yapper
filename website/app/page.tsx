@@ -11,7 +11,7 @@ const SENTENCES = [
 ]
 
 const FULL_TEXT = SENTENCES.join(" ")
-const DOWNLOAD_URL = "/downloads/Yapper-latest.dmg"
+const DOWNLOAD_URL = "/downloads/Yapper-0.1.0.dmg"
 
 export default function Home() {
   const [scrollProgress, setScrollProgress] = useState(0)
