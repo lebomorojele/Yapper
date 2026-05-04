@@ -43,11 +43,17 @@ else
   "$SPARKLE_TOOL" --download-url-prefix "$DOWNLOAD_URL_PREFIX" "$RELEASES_DIR"
 fi
 
+if [[ -f "$RELEASES_DIR/appcast.xml" ]]; then
+  APPCAST_DOWNLOAD_URL_PREFIX="$DOWNLOAD_URL_PREFIX" \
+    perl -0pi -e 'my $prefix = $ENV{APPCAST_DOWNLOAD_URL_PREFIX}; s#https?://[^"]*/(Yapper-[^"/]+\.dmg)#$prefix/$1#g' \
+    "$RELEASES_DIR/appcast.xml"
+fi
+
 cat <<EOF
 Generated Sparkle feed:
   $RELEASES_DIR/appcast.xml
 
 Upload:
   - DMG files from $RELEASES_DIR to $DOWNLOAD_URL_PREFIX
-  - appcast.xml from $RELEASES_DIR to https://yapper.app/appcast.xml
+  - appcast.xml from $RELEASES_DIR to https://yapper.party/appcast.xml
 EOF

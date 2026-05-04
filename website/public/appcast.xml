@@ -8,7 +8,7 @@
             <sparkle:version>1</sparkle:version>
             <sparkle:shortVersionString>0.1.0</sparkle:shortVersionString>
             <sparkle:minimumSystemVersion>15.0</sparkle:minimumSystemVersion>
-            <enclosure url="https://yapper.party/Yapper-0.1.0.dmg" length="15870345" type="application/octet-stream" sparkle:edSignature="hvxEMl9CIEC4KeivWysJIgStiQ9g5eez4BjGzeerOG6hjnb+/wDWZv+qOd6MWzIjrkCLfK3Nq0iGlvdZT7UzAw=="/>
+            <enclosure url="https://yapper.party/downloads/Yapper-0.1.0.dmg" length="15870345" type="application/octet-stream" sparkle:edSignature="hvxEMl9CIEC4KeivWysJIgStiQ9g5eez4BjGzeerOG6hjnb+/wDWZv+qOd6MWzIjrkCLfK3Nq0iGlvdZT7UzAw=="/>
         </item>
     </channel>
 </rss>
