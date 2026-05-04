@@ -18,8 +18,9 @@ website/.vercel/
 
 # Release artifacts and downloaded local models
 *.dmg
-!website/public/downloads/Yapper-latest.dmg
+!website/public/downloads/Yapper-*.dmg
 *.dmg.sha256
+!website/public/downloads/Yapper-*.dmg.sha256
 *.gguf
 
 # Local environment
