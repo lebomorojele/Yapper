@@ -1,206 +1,310 @@
-"use client"
+import Image from "next/image";
+import { VoiceDemo } from "@/components/voice-demo";
 
-import { useEffect, useState } from "react"
-import Image from "next/image"
-import { LiquidGlassPill } from "@/components/liquid-glass-pill"
+const download = "/downloads/Yapper-latest.dmg";
 
-const SENTENCES = [
-  "Speak naturally, Yapper transcribes locally,",
-  "cleans up your words, and inserts them instantly.",
-  "No cloud. No latency. Just your voice, perfected.",
-]
-
-const FULL_TEXT = SENTENCES.join(" ")
-const DOWNLOAD_URL = "/downloads/Yapper-0.1.0.dmg"
+function DownloadLink({
+  className = "",
+  children = "Download for Mac",
+}: {
+  className?: string;
+  children?: React.ReactNode;
+}) {
+  return (
+    <a className={`download ${className}`} href={download} download>
+      <svg viewBox="0 0 20 20" fill="none" aria-hidden="true">
+        <path
+          d="M10 2v10m-4-4 4 4 4-4M3 13v4h14v-4"
+          stroke="currentColor"
+          strokeWidth="1.5"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+      </svg>
+      {children}
+      <span aria-hidden="true">↗</span>
+    </a>
+  );
+}
 
 export default function Home() {
-  const [scrollProgress, setScrollProgress] = useState(0)
-
-  useEffect(() => {
-    const handleScroll = () => {
-      const scrollTop = window.scrollY
-      const docHeight = document.documentElement.scrollHeight - window.innerHeight
-      const progress = docHeight > 0 ? Math.min(scrollTop / docHeight, 1) : 0
-      setScrollProgress(progress)
-    }
-
-    window.addEventListener("scroll", handleScroll, { passive: true })
-    handleScroll()
-
-    return () => window.removeEventListener("scroll", handleScroll)
-  }, [])
-
-  // Phase breakdown:
-  // 0-15%:   Listening (dots)
-  // 15-75%:  Transcribing (3 sentences, one at a time, typing in → clearing → next)
-  // 75-85%:  Complete (checkmark)
-  // 85-100%: Download button
-  // 88%+:    Transcribed text fades in below
-
-  const listeningEnd = 0.15
-  const transcribingEnd = 0.75
-  const completeEnd = 0.85
-
-  type Phase = "listening" | "transcribing" | "complete" | "download"
-  let bubbleState: Phase = "listening"
-  if (scrollProgress < listeningEnd) bubbleState = "listening"
-  else if (scrollProgress < transcribingEnd) bubbleState = "transcribing"
-  else if (scrollProgress < completeEnd) bubbleState = "complete"
-  else bubbleState = "download"
-
-  const getTranscribingText = (): string => {
-    const t = scrollProgress
-
-    // Each sentence: short type-in window → dwell (full text) → clear gap
-    const segments = [
-      { typeStart: 0.15, typeEnd: 0.20, dwellEnd: 0.34, clearEnd: 0.37, idx: 0 },
-      { typeStart: 0.37, typeEnd: 0.42, dwellEnd: 0.56, clearEnd: 0.59, idx: 1 },
-      { typeStart: 0.59, typeEnd: 0.64, dwellEnd: 0.75, clearEnd: 0.75, idx: 2 },
-    ]
-
-    for (const s of segments) {
-      if (t >= s.typeStart && t < s.typeEnd) {
-        const p = (t - s.typeStart) / (s.typeEnd - s.typeStart)
-        return SENTENCES[s.idx].slice(0, Math.ceil(p * SENTENCES[s.idx].length))
-      }
-      if (t >= s.typeEnd && t < s.dwellEnd) return SENTENCES[s.idx]
-      if (t >= s.dwellEnd && t < s.clearEnd) return ""
-    }
-
-    return ""
-  }
-
-  const currentText = bubbleState === "transcribing" ? getTranscribingText() : undefined
-
-  const parallaxOffset = (() => {
-    if (scrollProgress < listeningEnd) return (scrollProgress / listeningEnd) * 15
-    if (scrollProgress < transcribingEnd) return 15
-    const post = (scrollProgress - transcribingEnd) / (1 - transcribingEnd)
-    return 15 + post * 35
-  })()
-
-  const showFooter = scrollProgress >= 0.75
-  const showTranscribedText = scrollProgress >= 0.88
-  const showAppIcon = scrollProgress >= 0.85
-
-  const handleDownload = () => {
-    window.location.href = DOWNLOAD_URL
-  }
-
   return (
-    <div className="relative">
-      <div style={{ height: "500vh" }} />
-
-      {/* Background */}
-      <div className="fixed inset-0 z-0 overflow-hidden">
-        <div
-          className="absolute w-full transition-transform duration-200 ease-out"
-          style={{ height: "150%", top: `-${parallaxOffset}%` }}
-        >
-          <Image
-            src="/images/ceiling-painting.jpg"
-            alt=""
-            fill
-            className="object-cover"
-            priority
-            quality={95}
-            sizes="100vw"
-          />
-        </div>
-        <div
-          className="absolute inset-0 pointer-events-none"
-          style={{
-            background: "radial-gradient(ellipse at center, transparent 40%, rgba(0,0,0,0.25) 100%)",
-          }}
-        />
-      </div>
-
-      {/* App icon - appears above the download bubble */}
-      <div
-        className="fixed z-40 left-1/2 transition-all duration-700 pointer-events-none"
-        style={{
-          top: "36%",
-          transform: "translate(-50%, -50%)",
-          opacity: showAppIcon ? 1 : 0,
-        }}
-      >
-        <Image
-          src="/images/yapper-icon.png"
-          alt="Yapper"
-          width={80}
-          height={80}
-          className="rounded-[22%] shadow-xl"
-          style={{ filter: "drop-shadow(0 8px 24px rgba(0,0,0,0.4))" }}
-        />
-      </div>
-
-      {/* Single bubble - centered, internal content changes with scroll */}
-      <div className="fixed inset-0 z-40 flex items-center justify-center pointer-events-none">
-        <div className="pointer-events-auto">
-          <LiquidGlassPill
-            text={bubbleState === "transcribing" ? currentText : undefined}
-            state={bubbleState}
-            onClick={bubbleState === "download" ? handleDownload : undefined}
-          />
-        </div>
-      </div>
-
-      {/* Transcribed text - appears below the download bubble */}
-      <div
-        className="fixed inset-x-0 z-30 flex flex-col items-center justify-center px-8 transition-all duration-1000 pointer-events-none"
-        style={{
-          top: "60%",
-          opacity: showTranscribedText ? 1 : 0,
-          transform: showTranscribedText ? "translateY(0)" : "translateY(20px)",
-        }}
-      >
-        <p
-          className="max-w-xl text-center text-lg md:text-2xl font-light leading-relaxed text-white/90"
-          style={{
-            textShadow: "0 2px 30px rgba(0,0,0,0.8), 0 4px 60px rgba(0,0,0,0.6)",
-          }}
-        >
-          {FULL_TEXT}
-        </p>
-      </div>
-
-      {/* Footer */}
-      <div
-        className="fixed bottom-8 inset-x-0 z-50 text-center transition-all duration-700 pointer-events-none"
-        style={{
-          opacity: showFooter ? 1 : 0,
-          transform: showFooter ? "translateY(0)" : "translateY(20px)",
-        }}
-      >
-        <p
-          className="text-white/70 text-sm tracking-wide pointer-events-auto"
-          style={{ textShadow: "0 2px 20px rgba(0,0,0,0.9)" }}
-        >
-          <span className="font-medium text-white/90">Yapper</span>
-          <span className="mx-3 text-white/40">|</span>
-          <a
-            href={DOWNLOAD_URL}
-            className="hover:text-white/90 transition-colors underline underline-offset-2"
-          >
-            Download
+    <>
+      <a href="#main" className="skip-link">
+        Skip to content
+      </a>
+      <header className="site-header">
+        <a href="#" className="wordmark" aria-label="Yapper home">
+          <Image src="/images/yapper-icon.png" alt="" width={34} height={34} />
+          yapper<span className="brand-period">✳</span>
+        </a>
+        <nav aria-label="Main navigation">
+          <a href="#how-it-works">The feeling</a>
+          <a href="#details">The details</a>
+          <a href="#download" className="nav-download">
+            Get Yapper <span aria-hidden="true">↗</span>
           </a>
-          <span className="mx-3 text-white/40">|</span>
-          Voice to text. Local. Private.
-        </p>
-      </div>
+        </nav>
+      </header>
+      <main id="main">
+        <section className="hero" aria-labelledby="hero-title">
+          <div className="hero-topline">
+            <span>
+              <i /> YOUR VOICE. YOUR MAC.
+            </span>
+            <span>A LITTLE LESS TYPING, PLEASE.</span>
+          </div>
+          <h1 id="hero-title">
+            You have a lot
+            <br />
+            to <em>say.</em>
+            <span className="hero-asterisk" aria-hidden="true">
+              ✳
+            </span>
+          </h1>
+          <div className="hero-bottom">
+            <p>
+              Let it out. Yapper turns your voice into text
+              <br className="desktop-break" /> in the app you're already using.
+              <br />
+              <span>All on your Mac. All yours.</span>
+            </p>
+            <div>
+              <DownloadLink />
+              <p className="download-note">
+                Free to use · Apple silicon · macOS 15+
+              </p>
+              <a className="first-launch-link" href="#first-launch">
+                Early build · First-launch help ↗
+              </a>
+            </div>
+          </div>
+          <div className="hero-rule">
+            <span>THINK IT. SAY IT. THERE IT IS.</span>
+            <a href="#how-it-works">
+              MEET YOUR NEW FLOW <span aria-hidden="true">↓</span>
+            </a>
+          </div>
+        </section>
 
-      {/* Scroll indicator */}
-      <div
-        className="fixed bottom-10 left-1/2 -translate-x-1/2 z-40 transition-opacity duration-500 pointer-events-none"
-        style={{ opacity: scrollProgress < 0.03 ? 1 : 0 }}
-      >
-        <div className="flex flex-col items-center gap-2 text-white/50">
-          <span className="text-xs tracking-[0.2em] uppercase">Scroll</span>
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" className="animate-bounce">
-            <path d="M12 5v14M12 19l-5-5M12 19l5-5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-          </svg>
+        <section
+          className="demo-section"
+          id="how-it-works"
+          aria-labelledby="demo-title"
+        >
+          <div className="section-intro">
+            <p className="eyebrow">01 / LESS FRICTION, MORE THOUGHT</p>
+            <h2 id="demo-title">
+              Keep up with
+              <br />
+              your <em>own mind.</em>
+            </h2>
+            <p>
+              The message. The first draft. That idea before it disappears. Tap
+              the Globe key, speak naturally, and tap again. Yapper takes care
+              of the typing.
+            </p>
+          </div>
+          <VoiceDemo />
+          <div className="demo-caption">
+            <span>SMALL ENOUGH TO STAY OUT OF YOUR WAY.</span>
+            <span>YOUR NEXT THOUGHT IS THE MAIN EVENT.</span>
+          </div>
+        </section>
+
+        <section
+          className="manifesto"
+          id="details"
+          aria-labelledby="details-title"
+        >
+          <p className="eyebrow">02 / MADE FOR YOUR MAC</p>
+          <h2 id="details-title">
+            Your words shouldn't
+            <br />
+            need a <em>round trip.</em>
+          </h2>
+          <div className="details-grid">
+            <article>
+              <span className="detail-symbol" aria-hidden="true">
+                ↳
+              </span>
+              <p className="detail-number">01</p>
+              <h3>Stays with you.</h3>
+              <p>
+                Speech recognition happens on your Mac. Your audio isn't sent to
+                a transcription service. Download the speech model once, then
+                dictate offline.
+              </p>
+            </article>
+            <article>
+              <span className="detail-symbol" aria-hidden="true">
+                ✴
+              </span>
+              <p className="detail-number">02</p>
+              <h3>Sounds like you.</h3>
+              <p>
+                Automatic punctuation and casing make your words ready to use.
+                Optional local cleanup helps with longer thoughts. Your meaning
+                stays yours.
+              </p>
+            </article>
+            <article>
+              <span className="detail-symbol key-symbol" aria-hidden="true">
+                fn
+              </span>
+              <p className="detail-number">03</p>
+              <h3>Right where you are.</h3>
+              <p>
+                A little pill shows your transcript as you speak. Yapper inserts
+                the result into the focused text field, with a clipboard
+                fallback for other apps.
+              </p>
+            </article>
+          </div>
+          <div className="privacy-line">
+            <span className="privacy-dot" />
+            <p>
+              No account. No transcription subscription. No cloud transcription.
+            </p>
+            <a href="https://github.com/lebomorojele/Yapper">
+              Read the source <span aria-hidden="true">↗</span>
+            </a>
+          </div>
+        </section>
+
+        <section className="getting-started" aria-labelledby="start-title">
+          <div>
+            <p className="eyebrow">03 / YOUR FIRST WORDS</p>
+            <h2 id="start-title">
+              A minute to set up.
+              <br />
+              <em>Then just talk.</em>
+            </h2>
+          </div>
+          <ol>
+            <li>
+              <span>1</span>
+              <div>
+                <h3>Make yourself at home.</h3>
+                <p>
+                  Download the DMG, open it, and drag Yapper into Applications.
+                  Launch it from there.
+                </p>
+              </div>
+            </li>
+            <li>
+              <span>2</span>
+              <div>
+                <h3>Give your voice a way in.</h3>
+                <p>
+                  Allow Microphone, Accessibility, and Input Monitoring when
+                  prompted. The speech model downloads on first launch.
+                </p>
+              </div>
+            </li>
+            <li>
+              <span>3</span>
+              <div>
+                <h3>Say what you came to say.</h3>
+                <p>
+                  Place your cursor in a text field. Tap Globe / Fn to start,
+                  speak, then tap again to finish.
+                </p>
+              </div>
+            </li>
+          </ol>
+        </section>
+
+        <section className="faq" aria-label="Questions and answers">
+          <p className="eyebrow">A FEW GOOD QUESTIONS</p>
+          <details id="first-launch">
+            <summary>
+              What if macOS blocks the first launch?<span>+</span>
+            </summary>
+            <p>
+              This early build is ad-hoc signed and is not Apple-notarized.
+              After you try opening Yapper, go to System Settings → Privacy
+              &amp; Security and choose Open Anyway for Yapper. Updates are
+              signed separately with Yapper's update key.
+            </p>
+          </details>
+          <details>
+            <summary>
+              Does Yapper work without the internet?<span>+</span>
+            </summary>
+            <p>
+              Yes, after the initial speech model download. Speech recognition
+              and text cleanup run locally. Internet access is used to download
+              models and check for app updates.
+            </p>
+          </details>
+          <details>
+            <summary>
+              Which Macs can run Yapper?<span>+</span>
+            </summary>
+            <p>
+              This build is for Apple silicon Macs running macOS 15 Sequoia or
+              later. The speech model runs on your Mac, so allow space for the
+              initial model download.
+            </p>
+          </details>
+          <details>
+            <summary>
+              What if my Globe key changes input language?<span>+</span>
+            </summary>
+            <p>
+              Open System Settings → Keyboard and set “Press Globe key to” to
+              “Do Nothing.” Make sure Yapper has Accessibility and Input
+              Monitoring access in Privacy & Security.
+            </p>
+          </details>
+          <details>
+            <summary>
+              How do updates work?<span>+</span>
+            </summary>
+            <p>
+              Choose “Check for Updates…” from the Yapper menu in your menu bar.
+              You can also download the current installer here whenever you need
+              it.
+            </p>
+          </details>
+        </section>
+
+        <section
+          className="download-section"
+          id="download"
+          aria-labelledby="download-title"
+        >
+          <span className="download-flower" aria-hidden="true">
+            ✳
+          </span>
+          <p className="eyebrow">LESS KEYBOARD. MORE YOU.</p>
+          <h2 id="download-title">
+            Go on.
+            <br />
+            <em>Yap a little.</em>
+          </h2>
+          <DownloadLink className="download-light" />
+          <p className="download-note">For Apple silicon · macOS 15 or later</p>
+          <p className="release-note">
+            Early release. Have feedback?{" "}
+            <a href="https://github.com/lebomorojele/Yapper/issues">
+              Tell us what happened ↗
+            </a>
+          </p>
+        </section>
+      </main>
+      <footer className="site-footer">
+        <a href="#" className="wordmark">
+          yapper<span className="brand-period">✳</span>
+        </a>
+        <p>Made for the way you think.</p>
+        <div>
+          <a href="https://github.com/lebomorojele/Yapper">GitHub ↗</a>
+          <a href="/appcast.xml">Update feed ↗</a>
+          <span>© {new Date().getFullYear()} Yapper</span>
         </div>
-      </div>
-    </div>
-  )
+      </footer>
+    </>
+  );
 }
