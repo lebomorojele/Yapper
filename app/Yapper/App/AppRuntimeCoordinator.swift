@@ -72,59 +72,34 @@ final class AppRuntimeCoordinator {
 
     private func bindCallbacks() {
         dictationController.onModelProgress = { [weak self] progress in
-            Task { @MainActor in self?.state.modelDownloadProgress = max(0, min(1, progress)) }
+            self?.state.modelDownloadProgress = max(0, min(1, progress))
         }
         hotkeyManager.onGesture = { [weak self] gesture in
-            Task { @MainActor in
-                self?.handleGesture(gesture)
-            }
+            Task { @MainActor in self?.handleGesture(gesture) }
         }
-
         hotkeyManager.onStatusChanged = { [weak self] status in
-            Task { @MainActor in
-                self?.state.hotkeyMonitoringStatus = status
-            }
+            Task { @MainActor in self?.state.hotkeyMonitoringStatus = status }
         }
-
         dictationController.onPartialTranscript = { [weak self] text in
-            Task { @MainActor in
-                self?.state.session?.partialTranscript = text
-            }
+            self?.state.session?.partialTranscript = text
         }
-
         dictationController.onSessionFinished = { [weak self] result in
-            Task { @MainActor in
-                self?.handleFinishedSession(result)
-            }
+            self?.handleFinishedSession(result)
         }
-
         dictationController.onRecordingStopped = { [weak self] in
-            Task { @MainActor in
-                guard let self, self.state.recordingPhase == .recording else { return }
-                self.state.recordingPhase = .processing
-            }
+            guard let self, self.state.recordingPhase == .recording else { return }
+            self.state.recordingPhase = .processing
         }
-
         dictationController.onAudioMeter = { [weak self] meter in
-            Task { @MainActor in
-                self?.state.session?.meter = meter
-            }
+            self?.state.session?.meter = meter
         }
-
         dictationController.onError = { [weak self] error in
-            Task { @MainActor in
-                guard let self else { return }
-                self.cleanupForDisposition(.failure(error.localizedDescription))
-            }
+            self?.cleanupForDisposition(.failure(error.localizedDescription))
         }
-
         dictationController.onModelLoaded = { [weak self] in
-            Task { @MainActor in
-                self?.state.modelReady = true
-                if self?.state.recordingPhase == .loading {
-                    self?.state.recordingPhase = .idle
-                }
-            }
+            guard let self else { return }
+            self.state.modelReady = true
+            if self.state.recordingPhase == .loading { self.state.recordingPhase = .idle }
         }
     }
 

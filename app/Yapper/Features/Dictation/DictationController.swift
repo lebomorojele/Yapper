@@ -8,13 +8,13 @@ final class DictationController {
     private var textInserter: TextInserterProtocol
     private let heuristicTextCleanupProcessor: TextCleanupProcessing
 
-    var onPartialTranscript: (@Sendable (String) -> Void)?
-    var onSessionFinished: (@Sendable (RecordingSessionResult) -> Void)?
-    var onRecordingStopped: (@Sendable () -> Void)?
-    var onError: (@Sendable (Error) -> Void)?
-    var onAudioMeter: (@Sendable (AudioMeter) -> Void)?
-    var onModelProgress: (@Sendable (Double) -> Void)?
-    var onModelLoaded: (@Sendable () -> Void)?
+    var onPartialTranscript: (@MainActor @Sendable (String) -> Void)?
+    var onSessionFinished: (@MainActor @Sendable (RecordingSessionResult) -> Void)?
+    var onRecordingStopped: (@MainActor @Sendable () -> Void)?
+    var onError: (@MainActor @Sendable (Error) -> Void)?
+    var onAudioMeter: (@MainActor @Sendable (AudioMeter) -> Void)?
+    var onModelProgress: (@MainActor @Sendable (Double) -> Void)?
+    var onModelLoaded: (@MainActor @Sendable () -> Void)?
 
     private(set) var isModelLoaded = false
     private var isRecording = false
