@@ -89,27 +89,27 @@ app/scripts/package-dmg.sh
 Expected output:
 
 - `app/dist/Yapper.app`
-- `app/dist/Yapper-0.1.0.dmg`
-- `app/dist/Yapper-0.1.0.dmg.sha256`
+- `app/dist/Yapper-0.2.0.dmg`
+- `app/dist/Yapper-0.2.0.dmg.sha256`
 
 Then generate the Sparkle feed:
 
 ```bash
-export DOWNLOAD_URL_PREFIX="https://yapper.app/downloads"
+export DOWNLOAD_URL_PREFIX="https://yapper.party/downloads"
 app/scripts/generate-appcast.sh
 ```
 
 Expected output:
 
 - `app/dist/sparkle/appcast.xml`
-- `app/dist/sparkle/Yapper-0.1.0.dmg`
+- `app/dist/sparkle/Yapper-0.2.0.dmg`
 
 Prepare the website public files:
 
 ```bash
 mkdir -p website/public/downloads
-cp app/dist/Yapper-0.1.0.dmg website/public/downloads/Yapper-0.1.0.dmg
-cp app/dist/Yapper-0.1.0.dmg website/public/downloads/Yapper-latest.dmg
+cp app/dist/Yapper-0.2.0.dmg website/public/downloads/Yapper-0.2.0.dmg
+cp app/dist/Yapper-0.2.0.dmg website/public/downloads/Yapper-latest.dmg
 cp app/dist/sparkle/appcast.xml website/public/appcast.xml
 ```
 
@@ -175,7 +175,7 @@ Recommended Coolify setup: Nixpacks static site.
 10. Set domain:
 
    ```text
-   yapper.app,www.yapper.app
+   yapper.party,www.yapper.party
    ```
 
 11. Enable HTTPS / Let’s Encrypt in Coolify.
@@ -188,10 +188,10 @@ Coolify’s own docs for Next.js static deployment specify Nixpacks, static-site
 Point DNS to the Hetzner VPS:
 
 ```text
-A     yapper.app       <VPS IPv4>
-A     www.yapper.app   <VPS IPv4>
-AAAA  yapper.app       <VPS IPv6, if configured>
-AAAA  www.yapper.app   <VPS IPv6, if configured>
+A     yapper.party       <VPS IPv4>
+A     www.yapper.party   <VPS IPv4>
+AAAA  yapper.party       <VPS IPv6, if configured>
+AAAA  www.yapper.party   <VPS IPv6, if configured>
 ```
 
 If using Cloudflare, start with DNS-only while validating downloads and Sparkle. Turn proxying on later if desired.
@@ -201,10 +201,10 @@ If using Cloudflare, start with DNS-only while validating downloads and Sparkle.
 Run from any machine:
 
 ```bash
-curl -I https://yapper.app/
-curl -I https://yapper.app/downloads/Yapper-latest.dmg
-curl -I https://yapper.app/appcast.xml
-curl -fsSL https://yapper.app/appcast.xml | head
+curl -I https://yapper.party/
+curl -I https://yapper.party/downloads/Yapper-latest.dmg
+curl -I https://yapper.party/appcast.xml
+curl -fsSL https://yapper.party/appcast.xml | head
 ```
 
 Expected:
@@ -212,12 +212,12 @@ Expected:
 - Website returns `200`.
 - DMG returns `200` with a nonzero content length.
 - Appcast returns XML.
-- The appcast contains `https://yapper.app/downloads/Yapper-0.1.0.dmg`.
+- The appcast contains `https://yapper.party/downloads/Yapper-0.2.0.dmg`.
 
 On macOS, download and verify:
 
 ```bash
-curl -L -o /tmp/Yapper.dmg https://yapper.app/downloads/Yapper-latest.dmg
+curl -L -o /tmp/Yapper.dmg https://yapper.party/downloads/Yapper-latest.dmg
 spctl --assess --type open --context context:primary-signature --verbose /tmp/Yapper.dmg
 hdiutil attach /tmp/Yapper.dmg
 ```
@@ -225,7 +225,7 @@ hdiutil attach /tmp/Yapper.dmg
 After installing `Yapper.app`, open the app menu and choose `Check for Updates...`. Sparkle should read:
 
 ```text
-https://yapper.app/appcast.xml
+https://yapper.party/appcast.xml
 ```
 
 ## Release Update Flow
@@ -245,4 +245,4 @@ For each new release:
 - Do not build or notarize the macOS app on the Linux VPS. Apple signing and notarization tooling should happen on macOS.
 - Do not use the placeholder Sparkle key for production.
 - Do not ship `app/dist/` directly from Git unless deliberately committing release artifacts. The public files Coolify needs are under `website/public/`.
-- Keep `https://yapper.app/appcast.xml` stable. Changing it requires shipping an app update with a new `SUFeedURL`.
+- Keep `https://yapper.party/appcast.xml` stable. Changing it requires shipping an app update with a new `SUFeedURL`.

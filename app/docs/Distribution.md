@@ -1,6 +1,6 @@
 # Yapper Distribution
 
-Yapper ships as a self-hosted, Developer ID signed, notarized DMG. Sparkle handles updates from the same hosted release artifacts.
+Yapper packages a macOS app into a self-hosted DMG and signs its Sparkle update feed. Current CI installers are ad-hoc signed. Developer ID signing and Apple notarization require Apple Developer credentials.
 
 ## One-time setup
 
@@ -49,14 +49,14 @@ The script signs the bundled helper binaries, signs Sparkle, signs the app with 
 ## Generate Sparkle appcast
 
 ```bash
-export DOWNLOAD_URL_PREFIX="https://yapper.app/downloads"
+export DOWNLOAD_URL_PREFIX="https://yapper.party/downloads"
 app/scripts/generate-appcast.sh
 ```
 
 Upload the generated DMG files from `app/dist/sparkle/` to the hosted downloads directory. `appcast.xml` must be available at:
 
 ```text
-https://yapper.app/appcast.xml
+https://yapper.party/appcast.xml
 ```
 
 If the appcast is hosted somewhere else, update `SUFeedURL` in `app/Yapper/Support/Info.plist` before packaging.

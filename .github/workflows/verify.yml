@@ -62,11 +62,12 @@ jobs:
         working-directory: app
         run: |
           command -v xcodegen || brew install xcodegen
-          xcodegen generate
+          scripts/generate-project.sh
       - name: Exercise native settings screens
         run: >-
           xcodebuild test -project app/Yapper.xcodeproj -scheme Yapper
           -destination 'platform=macOS' -only-testing:YapperUITests
+          -disableAutomaticPackageResolution -onlyUsePackageVersionsFromResolvedFile
           -resultBundlePath app/dist/NativeUI.xcresult CODE_SIGNING_ALLOWED=NO
       - uses: actions/upload-artifact@v4
         if: always()
