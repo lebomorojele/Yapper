@@ -1,0 +1,72 @@
+name: Verify Yapper
+on:
+  push:
+    branches: [main, feat/yapper-evening-release]
+  pull_request:
+  workflow_dispatch:
+    inputs:
+      native_only:
+        description: Run only the native UI checks
+        type: boolean
+        default: false
+concurrency:
+  group: yapper-verify-${{ github.head_ref || github.ref_name }}
+  cancel-in-progress: true
+permissions:
+  contents: read
+jobs:
+  macos:
+    if: ${{ github.event_name != 'workflow_dispatch' || !inputs.native_only }}
+    runs-on: macos-15
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - run: swift --version
+      - run: swift test --package-path app
+      - name: Transcribe real speech on device
+        env:
+          YAPPER_RUN_STT_INTEGRATION: "1"
+        run: swift test --package-path app --filter RealTranscriptionTests
+      - run: swift build -c release --package-path app
+      - name: Package app
+        run: ALLOW_PLACEHOLDER_SPARKLE_KEY=1 app/scripts/package-dmg.sh
+      - name: Launch the packaged app and capture native screens
+        run: app/scripts/smoke-bundle.sh
+      - name: Sign update feed
+        env:
+          SPARKLE_PRIVATE_KEY: ${{ secrets.SPARKLE_PRIVATE_KEY }}
+        run: app/scripts/generate-appcast.sh
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Yapper-macOS
+          path: |
+            app/dist/*.dmg
+            app/dist/*.sha256
+            app/dist/*.png
+            app/dist/*-smoke.log
+            app/dist/sparkle/appcast.xml
+            app/Package.resolved
+          if-no-files-found: error
+  native-ui:
+    runs-on: macos-15
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - name: Generate the native Xcode project
+        working-directory: app
+        run: |
+          command -v xcodegen || brew install xcodegen
+          scripts/generate-project.sh
+      - name: Exercise native settings screens
+        run: >-
+          xcodebuild test -project app/Yapper.xcodeproj -scheme Yapper
+          -destination 'platform=macOS' -only-testing:YapperUITests
+          -disableAutomaticPackageResolution -onlyUsePackageVersionsFromResolvedFile
+          -resultBundlePath app/dist/NativeUI.xcresult CODE_SIGNING_ALLOWED=NO
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: Yapper-native-ui
+          path: |
+            app/dist/NativeUI.xcresult
+            app/Yapper.xcodeproj

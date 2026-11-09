@@ -1,24 +1,26 @@
 import Foundation
 
-final class DictationController: @unchecked Sendable {
+@MainActor
+final class DictationController {
     private var audioEngine: AudioEngineProtocol
     private var transcriber: TranscriberProtocol
     private var textCleanupProcessor: TextCleanupProcessing
     private var textInserter: TextInserterProtocol
     private let heuristicTextCleanupProcessor: TextCleanupProcessing
 
-    var onPartialTranscript: (@Sendable (String) -> Void)?
-    var onSessionFinished: (@Sendable (RecordingSessionResult) -> Void)?
-    var onRecordingStopped: (@Sendable () -> Void)?
-    var onError: (@Sendable (Error) -> Void)?
-    var onAudioMeter: (@Sendable (AudioMeter) -> Void)?
-    var onModelLoaded: (@Sendable () -> Void)?
+    var onPartialTranscript: (@MainActor @Sendable (String) -> Void)?
+    var onSessionFinished: (@MainActor @Sendable (RecordingSessionResult) -> Void)?
+    var onRecordingStopped: (@MainActor @Sendable () -> Void)?
+    var onError: (@MainActor @Sendable (Error) -> Void)?
+    var onAudioMeter: (@MainActor @Sendable (AudioMeter) -> Void)?
+    var onModelProgress: (@MainActor @Sendable (Double) -> Void)?
+    var onModelLoaded: (@MainActor @Sendable () -> Void)?
 
     private(set) var isModelLoaded = false
     private var isRecording = false
+    private var processingTask: Task<Void, Never>?
     private var activeConfiguration: RecordingSessionConfiguration?
     private var activeSession: RecordingSession?
-    private var currentTranscript = ""
 
     init(
         audioEngine: AudioEngineProtocol,
@@ -36,29 +38,34 @@ final class DictationController: @unchecked Sendable {
     }
 
     private func wireCallbacks() {
-        audioEngine.onAudio = { [weak self] samples in
-            self?.transcriber.process(samples: samples)
+        transcriber.onLoadProgress = { [weak self] progress in
+            Task { @MainActor in self?.onModelProgress?(progress) }
         }
+        let transcriber = self.transcriber
+        audioEngine.onAudio = { samples in transcriber.process(samples: samples) }
+    }
 
+    private func wireSessionCallbacks(sessionID: UUID) {
         audioEngine.onSilence = { [weak self] in
-            guard let self, self.isRecording, self.activeConfiguration?.autoStopOnSilence == true else { return }
-            self.stopRecording()
+            Task { @MainActor in
+                guard let self, self.activeSession?.id == sessionID,
+                      self.isRecording, self.activeConfiguration?.autoStopOnSilence == true else { return }
+                self.stopRecording()
+            }
         }
-
         audioEngine.onMeter = { [weak self] meter in
-            self?.activeSession?.meter = meter
-            self?.onAudioMeter?(meter)
+            Task { @MainActor in
+                guard let self, self.activeSession?.id == sessionID, self.isRecording else { return }
+                self.activeSession?.meter = meter
+                self.onAudioMeter?(meter)
+            }
         }
-
         transcriber.onPartial = { [weak self] text in
-            guard let self else { return }
-            self.currentTranscript = text
-            self.activeSession?.partialTranscript = text
-            self.onPartialTranscript?(text)
-        }
-
-        transcriber.onFinal = { [weak self] text in
-            self?.currentTranscript = text
+            Task { @MainActor in
+                guard let self, self.activeSession?.id == sessionID, self.isRecording else { return }
+                self.activeSession?.partialTranscript = text
+                self.onPartialTranscript?(text)
+            }
         }
     }
 
@@ -75,19 +82,26 @@ final class DictationController: @unchecked Sendable {
     }
 
     func startRecording(configuration: RecordingSessionConfiguration) {
-        guard !isRecording else { return }
+        guard !isRecording, activeSession == nil else { return }
+        processingTask = nil
         isRecording = true
         activeConfiguration = configuration
-        activeSession = RecordingSession()
-        currentTranscript = ""
+        let session = RecordingSession()
+        activeSession = session
+        wireSessionCallbacks(sessionID: session.id)
 
         let settings = SettingsManager.shared.settings
         audioEngine.silenceThreshold = settings.silenceThreshold
         audioEngine.silenceDetectionEnabled = configuration.autoStopOnSilence && settings.silenceDetectionEnabled
         audioEngine.inputGain = settings.inputGain
 
-        transcriber.start()
-        audioEngine.start()
+        do {
+            try transcriber.start()
+            try audioEngine.start()
+        } catch {
+            discardRecording()
+            onError?(error)
+        }
     }
 
     func stopRecording() {
@@ -96,7 +110,6 @@ final class DictationController: @unchecked Sendable {
 
         audioEngine.stop()
         let finalText = transcriber.stop()
-        currentTranscript = finalText
 
         if activeSession == nil {
             activeSession = RecordingSession()
@@ -110,28 +123,30 @@ final class DictationController: @unchecked Sendable {
             return
         }
 
-        Task { [weak self] in
-            await self?.finishInsertedSession(rawTranscript: finalText)
+        let sessionID = activeSession?.id
+        processingTask = Task { @MainActor [weak self] in
+            await self?.finishInsertedSession(rawTranscript: finalText, sessionID: sessionID)
         }
     }
 
     func discardRecording() {
+        processingTask?.cancel()
+        processingTask = nil
         guard isRecording else {
             activeConfiguration = nil
             activeSession = nil
-            currentTranscript = ""
             return
         }
 
         isRecording = false
         audioEngine.stop()
         _ = transcriber.stop()
-        currentTranscript = ""
         activeConfiguration = nil
         activeSession = nil
     }
 
-    private func finishInsertedSession(rawTranscript: String) async {
+    private func finishInsertedSession(rawTranscript: String, sessionID: UUID?) async {
+        guard activeSession?.id == sessionID else { return }
         let trimmed = rawTranscript.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else {
             finishSession(transcript: trimmed, insertionOutcome: nil)
@@ -143,6 +158,7 @@ final class DictationController: @unchecked Sendable {
         if settings.cleanupEnabled {
             let fastOutput = await cleanedTextUsingHeuristic(from: trimmed)
             guard shouldUseModelCleanup(for: trimmed, settings: settings) else {
+                guard activeSession?.id == sessionID else { return }
                 let insertionOutcome = textInserter.insert(text: fastOutput, method: settings.insertionMethod)
                 finishSession(transcript: fastOutput, insertionOutcome: insertionOutcome)
                 return
@@ -160,6 +176,7 @@ final class DictationController: @unchecked Sendable {
             outputText = trimmed
         }
 
+        guard activeSession?.id == sessionID else { return }
         let insertionOutcome = textInserter.insert(text: outputText, method: settings.insertionMethod)
         finishSession(transcript: outputText, insertionOutcome: insertionOutcome)
     }

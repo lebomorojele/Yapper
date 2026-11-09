@@ -16,6 +16,7 @@ final class AppRuntimeCoordinator {
 
     private var completionDismissTask: Task<Void, Never>?
     private var restartAfterProcessing = false
+    private(set) var lastTranscript = ""
 
     init(
         dictationController: DictationControlling,
@@ -47,6 +48,17 @@ final class AppRuntimeCoordinator {
         hotkeyManager.refreshMonitoringState()
     }
 
+    func retryModelLoading() {
+        guard !state.modelReady, state.recordingPhase != .loading else { return }
+        state.recordingPhase = .loading
+        loadModel()
+    }
+
+    func cancelRecording() {
+        guard state.recordingPhase == .recording || state.recordingPhase == .processing else { return }
+        cleanupForDisposition(.cancel)
+    }
+
     func handleMenuToggleRecording() {
         toggleRecording()
     }
@@ -59,57 +71,35 @@ final class AppRuntimeCoordinator {
     }
 
     private func bindCallbacks() {
+        dictationController.onModelProgress = { [weak self] progress in
+            self?.state.modelDownloadProgress = max(0, min(1, progress))
+        }
         hotkeyManager.onGesture = { [weak self] gesture in
-            Task { @MainActor in
-                self?.handleGesture(gesture)
-            }
+            Task { @MainActor in self?.handleGesture(gesture) }
         }
-
         hotkeyManager.onStatusChanged = { [weak self] status in
-            Task { @MainActor in
-                self?.state.hotkeyMonitoringStatus = status
-            }
+            Task { @MainActor in self?.state.hotkeyMonitoringStatus = status }
         }
-
         dictationController.onPartialTranscript = { [weak self] text in
-            Task { @MainActor in
-                self?.state.session?.partialTranscript = text
-            }
+            self?.state.session?.partialTranscript = text
         }
-
         dictationController.onSessionFinished = { [weak self] result in
-            Task { @MainActor in
-                self?.handleFinishedSession(result)
-            }
+            self?.handleFinishedSession(result)
         }
-
         dictationController.onRecordingStopped = { [weak self] in
-            Task { @MainActor in
-                guard let self, self.state.recordingPhase == .recording else { return }
-                self.state.recordingPhase = .processing
-            }
+            guard let self, self.state.recordingPhase == .recording else { return }
+            self.state.recordingPhase = .processing
         }
-
         dictationController.onAudioMeter = { [weak self] meter in
-            Task { @MainActor in
-                self?.state.session?.meter = meter
-            }
+            self?.state.session?.meter = meter
         }
-
         dictationController.onError = { [weak self] error in
-            Task { @MainActor in
-                guard let self else { return }
-                self.cleanupForDisposition(.failure(error.localizedDescription))
-            }
+            self?.cleanupForDisposition(.failure(error.localizedDescription))
         }
-
         dictationController.onModelLoaded = { [weak self] in
-            Task { @MainActor in
-                self?.state.modelReady = true
-                if self?.state.recordingPhase == .loading {
-                    self?.state.recordingPhase = .idle
-                }
-            }
+            guard let self else { return }
+            self.state.modelReady = true
+            if self.state.recordingPhase == .loading { self.state.recordingPhase = .idle }
         }
     }
 
@@ -164,8 +154,13 @@ final class AppRuntimeCoordinator {
 
     private func startRecording() {
         guard state.modelReady else {
-            state.recordingPhase = .failed("Model not ready")
-            scheduleCompletionDismiss()
+            retryModelLoading()
+            return
+        }
+
+        refreshPermissions()
+        guard state.permissions.microphone == .authorized else {
+            state.recordingPhase = .failed("Allow Microphone access in System Settings → Privacy & Security.")
             return
         }
 
@@ -186,6 +181,8 @@ final class AppRuntimeCoordinator {
     }
 
     private func handleFinishedSession(_ result: RecordingSessionResult) {
+        guard state.recordingPhase == .recording || state.recordingPhase == .processing else { return }
+        if !result.transcript.isEmpty { lastTranscript = result.transcript }
         state.session = nil
         state.recordingStartTime = nil
 
@@ -195,7 +192,9 @@ final class AppRuntimeCoordinator {
             return
         }
 
-        state.recordingPhase = .completed(result.insertionOutcome)
+        state.recordingPhase = result.transcript.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+            ? .failed("No speech heard. Check your microphone and try again.")
+            : .completed(result.insertionOutcome)
         scheduleCompletionDismiss()
     }
 
@@ -219,7 +218,6 @@ final class AppRuntimeCoordinator {
             scheduleCompletionDismiss()
         case .failure(let error):
             state.recordingPhase = .failed(error)
-            scheduleCompletionDismiss()
         case .stop, .completion:
             break
         }
@@ -231,7 +229,7 @@ final class AppRuntimeCoordinator {
     private func scheduleCompletionDismiss() {
         completionDismissTask?.cancel()
         completionDismissTask = Task { [weak self] in
-            try? await Task.sleep(nanoseconds: 1_200_000_000)
+            do { try await Task.sleep(nanoseconds: 1_200_000_000) } catch { return }
             await MainActor.run {
                 self?.resetToIdle()
             }

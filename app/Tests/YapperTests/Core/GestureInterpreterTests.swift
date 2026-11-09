@@ -3,14 +3,8 @@ import XCTest
 
 @MainActor
 final class GestureInterpreterTests: XCTestCase {
-    var sut: GestureInterpreter!
-
-    override func setUp() async throws {
-        try await super.setUp()
-        sut = GestureInterpreter()
-    }
-
     func testSingleTap() {
+        let sut = GestureInterpreter()
         let expectation = expectation(description: "Single tap detected")
         sut.onGesture = { gesture in
             if case .singleTap = gesture {
@@ -25,6 +19,7 @@ final class GestureInterpreterTests: XCTestCase {
     }
 
     func testRepeatedKeyDownOnlyEmitsOneTapAfterRelease() {
+        let sut = GestureInterpreter()
         let expectation = expectation(description: "Single tap detected once")
         expectation.expectedFulfillmentCount = 1
         sut.onGesture = { _ in expectation.fulfill() }

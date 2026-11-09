@@ -240,4 +240,85 @@ final class DictationControllerTests: XCTestCase {
         XCTAssertFalse(context.audio.isRunning)
         XCTAssertNil(context.inserter.insertedText)
     }
+    @MainActor
+    func testMicrophoneStartFailureReportsErrorAndStopsSession() {
+        let context = makeSUT()
+        context.audio.startError = NSError(domain: "microphone", code: 1, userInfo: [NSLocalizedDescriptionKey: "Microphone disconnected"])
+        let reported = expectation(description: "Microphone failure reported")
+        context.sut.onError = { error in
+            XCTAssertEqual(error.localizedDescription, "Microphone disconnected")
+            reported.fulfill()
+        }
+        context.sut.startRecording(configuration: .init(autoStopOnSilence: true, shouldInsertText: true))
+        waitForExpectations(timeout: 1)
+        XCTAssertFalse(context.audio.isRunning)
+        XCTAssertNil(context.inserter.insertedText)
+    }
+
+    @MainActor
+    func testDiscardDuringCleanupNeverInsertsOldTranscript() async {
+        let originalSettings = SettingsManager.shared.settings
+        SettingsManager.shared.update { $0.modelCleanupWordThreshold = 0; $0.cleanupEnabled = true }
+        defer { SettingsManager.shared.settings = originalSettings }
+        let context = makeSUT()
+        context.cleanup.delay = .milliseconds(100)
+        let controller = context.sut
+        context.cleanup.onClean = {
+            DispatchQueue.main.async { controller.discardRecording() }
+        }
+        context.sut.startRecording(configuration: .init(autoStopOnSilence: true, shouldInsertText: true))
+        context.sut.stopRecording()
+        try? await Task.sleep(for: .milliseconds(200))
+        XCTAssertEqual(context.cleanup.inputs, ["Final transcript."])
+        XCTAssertNil(context.inserter.insertedText)
+    }
+
+    @MainActor
+    func testSessionCanDisableSilenceDetection() {
+        let context = makeSUT()
+        context.sut.startRecording(configuration: .init(autoStopOnSilence: false, shouldInsertText: true))
+        XCTAssertFalse(context.audio.silenceDetectionEnabled)
+        context.audio.simulateSilence()
+        XCTAssertTrue(context.audio.isRunning)
+        context.sut.discardRecording()
+    }
+
+    @MainActor
+    func testCallbacksFromDiscardedSessionCannotStopANewRecording() async {
+        let context = makeSUT()
+        let configuration = RecordingSessionConfiguration(autoStopOnSilence: true, shouldInsertText: true)
+        context.sut.startRecording(configuration: configuration)
+        let oldSilence = context.audio.onSilence
+        let oldPartial = context.transcriber.onPartial
+        context.sut.discardRecording()
+        context.sut.startRecording(configuration: configuration)
+        oldPartial?("Words from the previous recording")
+        oldSilence?()
+        await Task.yield()
+        XCTAssertTrue(context.audio.isRunning)
+        XCTAssertNil(context.inserter.insertedText)
+        context.sut.discardRecording()
+    }
+
+    @MainActor
+    func testDiscardCancelsCleanupWork() async {
+        let originalSettings = SettingsManager.shared.settings
+        SettingsManager.shared.update { $0.cleanupEnabled = true; $0.modelCleanupWordThreshold = 0 }
+        defer { SettingsManager.shared.settings = originalSettings }
+        let context = makeSUT()
+        let started = expectation(description: "Cleanup started")
+        let cancelled = expectation(description: "Cleanup cancelled")
+        context.cleanup.delay = .seconds(5)
+        context.cleanup.onClean = { started.fulfill() }
+        context.cleanup.onCancellation = { cancelled.fulfill() }
+        context.sut.startRecording(configuration: .init(autoStopOnSilence: true, shouldInsertText: true))
+        context.sut.stopRecording()
+        let startResult = await XCTWaiter.fulfillment(of: [started], timeout: 1)
+        XCTAssertEqual(startResult, .completed)
+        context.sut.discardRecording()
+        let cancelResult = await XCTWaiter.fulfillment(of: [cancelled], timeout: 1)
+        XCTAssertEqual(cancelResult, .completed)
+        XCTAssertNil(context.inserter.insertedText)
+    }
+
 }

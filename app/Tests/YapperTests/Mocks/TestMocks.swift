@@ -2,7 +2,7 @@ import Foundation
 import AVFoundation
 @testable import Yapper
 
-final class MockAudioEngine: AudioEngineProtocol {
+final class MockAudioEngine: AudioEngineProtocol, @unchecked Sendable {
     var onAudio: (@Sendable ([Float]) -> Void)?
     var onSilence: (@Sendable () -> Void)?
     var onMeter: (@Sendable (AudioMeter) -> Void)?
@@ -12,8 +12,12 @@ final class MockAudioEngine: AudioEngineProtocol {
     var inputGain: Float = 1.0
 
     var isRunning = false
+    var startError: Error?
 
-    func start() { isRunning = true }
+    func start() throws {
+        if let startError { throw startError }
+        isRunning = true
+    }
     func stop() { isRunning = false }
 
     func simulateSilence() { onSilence?() }
@@ -22,7 +26,8 @@ final class MockAudioEngine: AudioEngineProtocol {
     }
 }
 
-final class MockTranscriber: TranscriberProtocol {
+final class MockTranscriber: TranscriberProtocol, @unchecked Sendable {
+    var onLoadProgress: (@Sendable (Double) -> Void)?
     var onPartial: (@Sendable (String) -> Void)?
     var onFinal: (@Sendable (String) -> Void)?
 
@@ -45,10 +50,18 @@ final class MockTranscriber: TranscriberProtocol {
 final class MockTextCleanupProcessor: TextCleanupProcessing, @unchecked Sendable {
     var output: String?
     var error: Error?
+    var delay: Duration = .zero
+    var onClean: (@Sendable () -> Void)?
+    var onCancellation: (@Sendable () -> Void)?
     private(set) var inputs: [String] = []
 
     func clean(text: String) async throws -> String {
         inputs.append(text)
+        onClean?()
+        do { try await Task.sleep(for: delay) } catch {
+            if error is CancellationError { onCancellation?() }
+            throw error
+        }
         if let error {
             throw error
         }
@@ -124,12 +137,13 @@ final class MockHotkeyManager: HotkeyManaging, @unchecked Sendable {
 }
 
 final class MockDictationController: DictationControlling, @unchecked Sendable {
-    var onPartialTranscript: (@Sendable (String) -> Void)?
-    var onSessionFinished: (@Sendable (RecordingSessionResult) -> Void)?
-    var onRecordingStopped: (@Sendable () -> Void)?
-    var onError: (@Sendable (Error) -> Void)?
-    var onAudioMeter: (@Sendable (AudioMeter) -> Void)?
-    var onModelLoaded: (@Sendable () -> Void)?
+    var onPartialTranscript: (@MainActor @Sendable (String) -> Void)?
+    var onSessionFinished: (@MainActor @Sendable (RecordingSessionResult) -> Void)?
+    var onRecordingStopped: (@MainActor @Sendable () -> Void)?
+    var onError: (@MainActor @Sendable (Error) -> Void)?
+    var onAudioMeter: (@MainActor @Sendable (AudioMeter) -> Void)?
+    var onModelProgress: (@MainActor @Sendable (Double) -> Void)?
+    var onModelLoaded: (@MainActor @Sendable () -> Void)?
 
     private(set) var startConfigurations: [RecordingSessionConfiguration] = []
     private(set) var stopCallCount = 0

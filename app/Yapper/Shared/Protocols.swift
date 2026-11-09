@@ -1,12 +1,14 @@
 import Foundation
 
+@MainActor
 protocol DictationControlling: AnyObject, Sendable {
-    var onPartialTranscript: (@Sendable (String) -> Void)? { get set }
-    var onSessionFinished: (@Sendable (RecordingSessionResult) -> Void)? { get set }
-    var onRecordingStopped: (@Sendable () -> Void)? { get set }
-    var onError: (@Sendable (Error) -> Void)? { get set }
-    var onAudioMeter: (@Sendable (AudioMeter) -> Void)? { get set }
-    var onModelLoaded: (@Sendable () -> Void)? { get set }
+    var onPartialTranscript: (@MainActor @Sendable (String) -> Void)? { get set }
+    var onSessionFinished: (@MainActor @Sendable (RecordingSessionResult) -> Void)? { get set }
+    var onRecordingStopped: (@MainActor @Sendable () -> Void)? { get set }
+    var onError: (@MainActor @Sendable (Error) -> Void)? { get set }
+    var onAudioMeter: (@MainActor @Sendable (AudioMeter) -> Void)? { get set }
+    var onModelLoaded: (@MainActor @Sendable () -> Void)? { get set }
+    var onModelProgress: (@MainActor @Sendable (Double) -> Void)? { get set }
 
     func loadModel() async
     func startRecording(configuration: RecordingSessionConfiguration)
@@ -31,24 +33,25 @@ protocol PermissionManaging: AnyObject, Sendable {
     func requestInputMonitoringPermission()
 }
 
-protocol AudioEngineProtocol {
+protocol AudioEngineProtocol: Sendable {
     var onAudio: (@Sendable ([Float]) -> Void)? { get set }
     var onSilence: (@Sendable () -> Void)? { get set }
     var onMeter: (@Sendable (AudioMeter) -> Void)? { get set }
 
-    func start()
+    func start() throws
     func stop()
     var silenceThreshold: TimeInterval { get set }
     var silenceDetectionEnabled: Bool { get set }
     var inputGain: Float { get set }
 }
 
-protocol TranscriberProtocol {
+protocol TranscriberProtocol: Sendable {
+    var onLoadProgress: (@Sendable (Double) -> Void)? { get set }
     var onPartial: (@Sendable (String) -> Void)? { get set }
     var onFinal: (@Sendable (String) -> Void)? { get set }
 
     func loadModel() async throws
-    func start()
+    func start() throws
     func stop() -> String
     func process(samples: [Float])
 }

@@ -1,6 +1,7 @@
 import AppKit
 import AVFoundation
 import SwiftUI
+import ServiceManagement
 
 enum PreferencesPane: String, CaseIterable, Identifiable {
     case general = "General"
@@ -26,11 +27,13 @@ final class PreferencesViewModel: ObservableObject {
     @Published var selectedPane: PreferencesPane = .general
     @Published var availableDevices: [AVCaptureDevice] = []
     @Published var inputLevel: Float = 0
+    @Published var loginItemError: String?
 
     private let audioLevelMonitor = SettingsAudioLevelMonitor()
 
     init(settings: Settings = SettingsManager.shared.settings) {
         self.settings = settings
+        self.settings.launchAtLogin = SMAppService.mainApp.status == .enabled
         refreshDevices()
         audioLevelMonitor.onLevelChange = { [weak self] level in
             guard let self else { return }
@@ -38,7 +41,6 @@ final class PreferencesViewModel: ObservableObject {
                 self.inputLevel = level
             }
         }
-        audioLevelMonitor.start(deviceID: settings.selectedAudioDeviceId)
     }
 
     func binding<Value>(
@@ -56,13 +58,40 @@ final class PreferencesViewModel: ObservableObject {
         )
     }
 
+    func startAudioMeter() {
+        guard selectedPane == .audio, !UITestSupport.isEnabled else { return }
+        audioLevelMonitor.start(deviceID: settings.selectedAudioDeviceId)
+    }
+
+    func stopAudioMeter() {
+        audioLevelMonitor.stop()
+        inputLevel = 0
+    }
+
+    func launchAtLoginBinding() -> Binding<Bool> {
+        Binding(
+            get: { self.settings.launchAtLogin },
+            set: { enabled in
+                do {
+                    if enabled { try SMAppService.mainApp.register() }
+                    else { try SMAppService.mainApp.unregister() }
+                    self.loginItemError = nil
+                } catch {
+                    self.loginItemError = error.localizedDescription
+                }
+                self.settings.launchAtLogin = SMAppService.mainApp.status == .enabled
+                self.persist()
+            }
+        )
+    }
+
     func bindingForSelectedDevice() -> Binding<String> {
         Binding(
             get: { self.settings.selectedAudioDeviceId ?? "" },
             set: { newValue in
                 self.settings.selectedAudioDeviceId = newValue.isEmpty ? nil : newValue
                 self.persist()
-                self.audioLevelMonitor.start(deviceID: self.settings.selectedAudioDeviceId)
+                self.startAudioMeter()
             }
         )
     }
@@ -86,7 +115,11 @@ final class PreferencesViewModel: ObservableObject {
 }
 
 struct SettingsView: View {
-    @StateObject private var model = PreferencesViewModel()
+    @StateObject private var model: PreferencesViewModel
+
+    init(model: PreferencesViewModel = PreferencesViewModel()) {
+        _model = StateObject(wrappedValue: model)
+    }
     @State private var columnVisibility = NavigationSplitViewVisibility.automatic
 
     var body: some View {
@@ -198,11 +231,14 @@ private struct GeneralPreferencesPane: View {
                     }
                 }
 
-                Toggle("Launch at Login", isOn: model.binding(for: \.launchAtLogin))
+                Toggle("Launch at Login", isOn: model.launchAtLoginBinding())
+                if let error = model.loginItemError {
+                    Text(error).font(.caption).foregroundStyle(.red)
+                }
             } header: {
                 Text("General")
             } footer: {
-                Text("Accessibility inserts into the focused field. Clipboard is more compatible with stubborn apps, but briefly replaces the clipboard while pasting. Shorter snippets stay on the instant cleanup path; enhanced cleanup uses an optional local model for longer dictation.")
+                Text("Accessibility inserts into the focused field. Clipboard is more compatible with stubborn apps, but places the transcript on the clipboard and pastes it. Shorter snippets stay on the instant cleanup path; enhanced cleanup uses an optional local model for longer dictation.")
             }
         }
         .formStyle(.grouped)
@@ -355,6 +391,8 @@ private struct AudioPreferencesPane: View {
         .formStyle(.grouped)
         .navigationTitle("Audio")
         .accessibilityIdentifier("settings.pane.audio")
+        .onAppear { model.startAudioMeter() }
+        .onDisappear { model.stopAudioMeter() }
     }
 }
 
@@ -398,7 +436,7 @@ private struct AboutPreferencesPane: View {
                     .foregroundStyle(.secondary)
             }
 
-            Text("Version 2.0")
+            Text("Version \(Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "0.2.0")")
                 .foregroundStyle(.secondary)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -412,14 +450,25 @@ private final class SettingsAudioLevelMonitor: NSObject, AVCaptureAudioDataOutpu
 
     private let session = AVCaptureSession()
     private let sessionQueue = DispatchQueue(label: "com.yapper.settings-audio-meter")
+    private var wantsMonitoring = false
 
     func start(deviceID: String?) {
         sessionQueue.async { [weak self] in
+            self?.wantsMonitoring = true
             self?.configureAndStart(deviceID: deviceID)
         }
     }
 
+    func stop() {
+        sessionQueue.async { [weak self] in
+            self?.wantsMonitoring = false
+            self?.stopLocked()
+            self?.publish(level: 0)
+        }
+    }
+
     private func configureAndStart(deviceID: String?) {
+        guard wantsMonitoring else { return }
         switch AVCaptureDevice.authorizationStatus(for: .audio) {
         case .authorized:
             break
@@ -429,7 +478,9 @@ private final class SettingsAudioLevelMonitor: NSObject, AVCaptureAudioDataOutpu
                     self?.publish(level: 0)
                     return
                 }
-                self?.start(deviceID: deviceID)
+                self?.sessionQueue.async { [weak self] in
+                    self?.configureAndStart(deviceID: deviceID)
+                }
             }
             return
         case .denied, .restricted:

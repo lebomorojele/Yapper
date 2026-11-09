@@ -13,13 +13,45 @@ final class YapperUITests: XCTestCase {
         app.launchEnvironment["YAPPER_OPEN_SETTINGS_ON_LAUNCH"] = "1"
         app.launch()
 
-        XCTAssertTrue(app.otherElements["settings.root"].waitForExistence(timeout: 5))
-        XCTAssertTrue(app.otherElements["settings.pane.general"].exists)
+        XCTAssertTrue(app.windows.firstMatch.waitForExistence(timeout: 10))
+        XCTAssertTrue(app.radioButtons["Accessibility"].exists, app.debugDescription)
 
-        app.staticTexts["Audio"].click()
-        XCTAssertTrue(app.otherElements["settings.pane.audio"].waitForExistence(timeout: 2))
+        app.buttons["settings.sidebar.audio"].click()
+        XCTAssertTrue(app.sliders.firstMatch.waitForExistence(timeout: 2))
 
-        app.staticTexts["Keyboard"].click()
-        XCTAssertTrue(app.otherElements["settings.pane.keyboard"].waitForExistence(timeout: 2))
+        app.buttons["settings.sidebar.keyboard"].click()
+        XCTAssertTrue(text("Fn / Globe").waitForExistence(timeout: 2))
+
+        app.buttons["settings.sidebar.about"].click()
+        XCTAssertTrue(text("Version 0.2.0").waitForExistence(timeout: 2))
+        keepScreenshot("Native settings")
+    }
+
+    func testWelcomeExplainsPermissionsAndWaitsForModelReadiness() throws {
+        app.launchEnvironment["YAPPER_UI_TEST_MODE"] = "1"
+        app.launchEnvironment["YAPPER_OPEN_WELCOME_ON_LAUNCH"] = "1"
+        app.launch()
+
+        XCTAssertTrue(element("welcome.root").waitForExistence(timeout: 10))
+        XCTAssertTrue(app.staticTexts["Microphone"].exists)
+        XCTAssertTrue(app.staticTexts["Accessibility"].exists)
+        XCTAssertTrue(app.staticTexts["Input Monitoring"].exists)
+        XCTAssertFalse(app.buttons["Let's yap"].isEnabled)
+        keepScreenshot("Native setup")
+    }
+
+    private func text(_ label: String) -> XCUIElement {
+        app.descendants(matching: .any).matching(NSPredicate(format: "label == %@ OR value == %@", label, label)).firstMatch
+    }
+
+    private func element(_ identifier: String) -> XCUIElement {
+        app.descendants(matching: .any).matching(identifier: identifier).firstMatch
+    }
+
+    private func keepScreenshot(_ name: String) {
+        let attachment = XCTAttachment(screenshot: app.screenshot())
+        attachment.name = name
+        attachment.lifetime = .keepAlways
+        add(attachment)
     }
 }

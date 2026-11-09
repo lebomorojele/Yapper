@@ -19,6 +19,10 @@ enum AppResourceLocator {
             return [Bundle.main.resourceURL].compactMap { $0 }
         }
 
+        #if SWIFT_PACKAGE
         return [Bundle.module.resourceURL].compactMap { $0 }
+        #else
+        return [Bundle.main.resourceURL].compactMap { $0 }
+        #endif
     }
 }

@@ -53,18 +53,22 @@ final class TextInserter: @unchecked Sendable {
 
         let element = focused as! AXUIElement
 
-        // Prefer replacing the selected range when the focused element exposes one.
-        var valueRef: CFTypeRef?
-        AXUIElementCopyAttributeValue(element, kAXValueAttribute as CFString, &valueRef)
-        let existing = (valueRef as? String) ?? ""
-
-        let newValue: String
-        if let selectedRange = selectedTextRange(for: element),
-           let swiftRange = Range(NSRange(location: selectedRange.location, length: selectedRange.length), in: existing) {
-            newValue = existing.replacingCharacters(in: swiftRange, with: text)
-        } else {
-            newValue = existing + text
+        // Replace the selection directly so rich text and editor state remain intact.
+        if AXUIElementSetAttributeValue(element, kAXSelectedTextAttribute as CFString, text as CFTypeRef) == .success {
+            return true
         }
+
+        let originalRange = selectedTextRange(for: element)
+        // Only fall back to a full-value update when the current value can be read.
+        var valueRef: CFTypeRef?
+        guard AXUIElementCopyAttributeValue(element, kAXValueAttribute as CFString, &valueRef) == .success,
+              let existing = valueRef as? String,
+              let selectedRange = originalRange,
+              let swiftRange = Range(NSRange(location: selectedRange.location, length: selectedRange.length), in: existing) else {
+            return false
+        }
+
+        let newValue = existing.replacingCharacters(in: swiftRange, with: text)
 
         let result = AXUIElementSetAttributeValue(
             element,
@@ -76,8 +80,8 @@ final class TextInserter: @unchecked Sendable {
             return false
         }
 
-        if let selectedRange = selectedTextRange(for: element) {
-            let insertionLocation = selectedRange.location + text.utf16.count
+        if let originalRange {
+            let insertionLocation = originalRange.location + text.utf16.count
             setSelectedTextRange(
                 for: element,
                 range: CFRange(location: insertionLocation, length: 0)

@@ -150,4 +150,33 @@ final class AppRuntimeCoordinatorTests: XCTestCase {
         XCTAssertNil(context.sut.state.recordingStartTime)
         XCTAssertEqual(context.sut.state.recordingPhase, .failed("boom"))
     }
+    func testModelLoadFailureIsVisibleBeforeModelIsReady() async {
+        let context = makeSUT()
+        context.dictation.onError?(NSError(domain: "model", code: 1, userInfo: [NSLocalizedDescriptionKey: "Download interrupted"]))
+        await Task.yield()
+        XCTAssertEqual(context.sut.state.displayRecordingState, .failed)
+        XCTAssertEqual(context.sut.state.recordingPhase, .failed("Download interrupted"))
+    }
+
+    func testDeniedMicrophoneDoesNotStartRecording() async {
+        let context = makeSUT()
+        context.sut.start()
+        await markModelReady(context)
+        context.permissions.currentSnapshot.microphone = .denied
+        context.sut.handleGesture(.singleTap)
+        XCTAssertTrue(context.dictation.startConfigurations.isEmpty)
+        XCTAssertEqual(context.sut.state.displayRecordingState, .failed)
+    }
+
+    func testEmptySpeechDoesNotReportSuccessfulInsertion() async {
+        let context = makeSUT()
+        context.sut.start()
+        await markModelReady(context)
+        context.sut.handleGesture(.singleTap)
+        context.dictation.onSessionFinished?(.init(session: RecordingSession(), transcript: "", insertionOutcome: nil))
+        await Task.yield()
+        XCTAssertEqual(context.sut.state.displayRecordingState, .failed)
+        XCTAssertEqual(context.sut.lastTranscript, "")
+    }
+
 }

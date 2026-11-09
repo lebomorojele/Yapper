@@ -129,7 +129,14 @@ final class LlamaCppTextCleanupProcessor: TextCleanupProcessing, @unchecked Send
         process.standardOutput = stdout
         process.standardError = stderr
 
+        try Task.checkCancellation()
         try process.run()
+        defer {
+            if process.isRunning {
+                process.terminate()
+                process.waitUntilExit()
+            }
+        }
 
         let deadline = Date().addingTimeInterval(timeout)
         while process.isRunning {

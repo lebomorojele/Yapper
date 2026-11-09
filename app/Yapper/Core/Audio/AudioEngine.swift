@@ -1,26 +1,29 @@
 import Foundation
 import AVFoundation
+import AudioToolbox
+import CoreAudio
 @preconcurrency import AVFAudio
 
 final class AudioEngine: AudioEngineProtocol, @unchecked Sendable {
     private let queue = DispatchQueue(label: "com.yapper.audioengine")
+    private let callbackLock = NSLock()
     
     private var _onAudio: (@Sendable ([Float]) -> Void)?
     var onAudio: (@Sendable ([Float]) -> Void)? {
-        get { queue.sync { _onAudio } }
-        set { queue.sync { _onAudio = newValue } }
+        get { callbackLock.withLock { _onAudio } }
+        set { callbackLock.withLock { _onAudio = newValue } }
     }
 
     private var _onSilence: (@Sendable () -> Void)?
     var onSilence: (@Sendable () -> Void)? {
-        get { queue.sync { _onSilence } }
-        set { queue.sync { _onSilence = newValue } }
+        get { callbackLock.withLock { _onSilence } }
+        set { callbackLock.withLock { _onSilence = newValue } }
     }
 
     private var _onMeter: (@Sendable (AudioMeter) -> Void)?
     var onMeter: (@Sendable (AudioMeter) -> Void)? {
-        get { queue.sync { _onMeter } }
-        set { queue.sync { _onMeter = newValue } }
+        get { callbackLock.withLock { _onMeter } }
+        set { callbackLock.withLock { _onMeter = newValue } }
     }
 
     var silenceThreshold: TimeInterval = 1.5
@@ -28,6 +31,7 @@ final class AudioEngine: AudioEngineProtocol, @unchecked Sendable {
     var inputGain: Float = 1.0
 
     private var engine: AVAudioEngine?
+    private var converter: AVAudioConverter?
     private var isRunning = false
     private var silenceStart: Date?
 
@@ -50,35 +54,44 @@ final class AudioEngine: AudioEngineProtocol, @unchecked Sendable {
         )
     }
 
-    func start() {
-        queue.sync {
+    func start() throws {
+        try queue.sync {
             guard !isRunning else { return }
             
-            let settings = SettingsManager.shared.settings
-            self.silenceThreshold = settings.silenceThreshold
-            self.silenceDetectionEnabled = settings.silenceDetectionEnabled
-            self.inputGain = settings.inputGain
-
             let eng = AVAudioEngine()
-            engine = eng
-
             let input = eng.inputNode
+            try selectInputDevice(on: input)
             let inputFormat = input.outputFormat(forBus: 0)
 
+            guard inputFormat.sampleRate > 0, inputFormat.channelCount > 0,
+                  let targetFormat else {
+                engine = nil
+                throw NSError(domain: "Yapper.Audio", code: 1, userInfo: [NSLocalizedDescriptionKey: "No microphone is available. Connect a microphone and try again."])
+            }
+            converter = AVAudioConverter(from: inputFormat, to: targetFormat)
+            guard converter != nil else {
+                engine = nil
+                throw NSError(domain: "Yapper.Audio", code: 2, userInfo: [NSLocalizedDescriptionKey: "This microphone format could not be converted. Try another input device."])
+            }
+
+            engine = eng
             input.installTap(onBus: 0, bufferSize: bufferSize, format: inputFormat) { [weak self] buffer, _ in
                 self?.processBuffer(buffer, inputFormat: inputFormat)
             }
 
+            silenceStart = nil
+            smoothedLevel = 0
+            smoothedPeak = 0
+            rollingBars = Array(repeating: 0, count: meterBarCount)
             do {
                 try eng.start()
                 isRunning = true
-                silenceStart = nil
-                smoothedLevel = 0
-                smoothedPeak = 0
-                rollingBars = Array(repeating: 0, count: meterBarCount)
                 print("[AudioEngine] Started — input format: \(inputFormat)")
             } catch {
-                print("[AudioEngine] Failed to start: \(error)")
+                input.removeTap(onBus: 0)
+                engine = nil
+                converter = nil
+                throw error
             }
         }
     }
@@ -89,6 +102,7 @@ final class AudioEngine: AudioEngineProtocol, @unchecked Sendable {
             engine?.stop()
             engine?.inputNode.removeTap(onBus: 0)
             engine = nil
+            converter = nil
             isRunning = false
             silenceStart = nil
             smoothedLevel = 0
@@ -98,6 +112,47 @@ final class AudioEngine: AudioEngineProtocol, @unchecked Sendable {
     }
 
     // MARK: - Internal
+
+    private func selectInputDevice(on input: AVAudioInputNode) throws {
+        guard let selectedUID = SettingsManager.shared.settings.selectedAudioDeviceId else { return }
+        var address = AudioObjectPropertyAddress(
+            mSelector: kAudioHardwarePropertyDevices,
+            mScope: kAudioObjectPropertyScopeGlobal,
+            mElement: kAudioObjectPropertyElementMain
+        )
+        var size: UInt32 = 0
+        guard AudioObjectGetPropertyDataSize(AudioObjectID(kAudioObjectSystemObject), &address, 0, nil, &size) == noErr, size > 0 else {
+            throw microphoneSelectionError()
+        }
+        var devices = [AudioDeviceID](repeating: 0, count: Int(size) / MemoryLayout<AudioDeviceID>.size)
+        let status = devices.withUnsafeMutableBytes { bytes in
+            AudioObjectGetPropertyData(AudioObjectID(kAudioObjectSystemObject), &address, 0, nil, &size, bytes.baseAddress!)
+        }
+        guard status == noErr else { throw microphoneSelectionError() }
+        for device in devices {
+            var uidAddress = AudioObjectPropertyAddress(
+                mSelector: kAudioDevicePropertyDeviceUID,
+                mScope: kAudioObjectPropertyScopeGlobal,
+                mElement: kAudioObjectPropertyElementMain
+            )
+            var uid: Unmanaged<CFString>?
+            var uidSize = UInt32(MemoryLayout<Unmanaged<CFString>?>.size)
+            guard AudioObjectGetPropertyData(device, &uidAddress, 0, nil, &uidSize, &uid) == noErr,
+                  let uid else { continue }
+            guard uid.takeRetainedValue() as String == selectedUID else { continue }
+            guard let unit = input.audioUnit else { throw microphoneSelectionError() }
+            var deviceID = device
+            guard AudioUnitSetProperty(unit, kAudioOutputUnitProperty_CurrentDevice, kAudioUnitScope_Global, 0, &deviceID, UInt32(MemoryLayout<AudioDeviceID>.size)) == noErr else {
+                throw microphoneSelectionError()
+            }
+            return
+        }
+        throw microphoneSelectionError()
+    }
+
+    private func microphoneSelectionError() -> NSError {
+        NSError(domain: "Yapper.Audio", code: 3, userInfo: [NSLocalizedDescriptionKey: "The selected microphone is unavailable. Reconnect it or choose System Default in Yapper's Audio settings."])
+    }
 
     private func processBuffer(_ buffer: AVAudioPCMBuffer, inputFormat: AVAudioFormat) {
         guard let targetFormat else { return }
@@ -134,15 +189,21 @@ final class AudioEngine: AudioEngineProtocol, @unchecked Sendable {
             guard let data = buffer.floatChannelData?[0] else { return }
             samples = Array(UnsafeBufferPointer(start: data, count: Int(buffer.frameLength)))
         } else {
-            guard let converter = AVAudioConverter(from: inputFormat, to: targetFormat) else { return }
+            guard let converter else { return }
 
             let ratio = targetSampleRate / inputFormat.sampleRate
-            let frameCount = AVAudioFrameCount(Double(buffer.frameLength) * ratio)
+            let frameCount = AVAudioFrameCount(ceil(Double(buffer.frameLength) * ratio)) + 32
             guard let converted = AVAudioPCMBuffer(pcmFormat: targetFormat, frameCapacity: frameCount) else { return }
 
             var error: NSError?
             let inputBuffer = buffer
+            var suppliedInput = false
             let inputBlock: AVAudioConverterInputBlock = { _, outStatus in
+                guard !suppliedInput else {
+                    outStatus.pointee = .noDataNow
+                    return nil
+                }
+                suppliedInput = true
                 outStatus.pointee = .haveData
                 return inputBuffer
             }
@@ -156,7 +217,7 @@ final class AudioEngine: AudioEngineProtocol, @unchecked Sendable {
 
         guard !samples.isEmpty else { return }
         
-        let processedSamples = inputGain > 1.0 ? samples.map { $0 * inputGain } : samples
+        let processedSamples = inputGain != 1.0 ? samples.map { max(-1, min(1, $0 * inputGain)) } : samples
         onAudio?(processedSamples)
     }
 

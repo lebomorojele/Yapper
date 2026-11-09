@@ -16,7 +16,6 @@ let package = Package(
             name: "Yapper",
             dependencies: [
                 .product(name: "ParakeetStreamingASR", package: "speech-swift"),
-                .product(name: "ParakeetASR", package: "speech-swift"),
                 .product(name: "Sparkle", package: "Sparkle")
             ],
             path: "Yapper",
@@ -35,7 +34,8 @@ let package = Package(
         .testTarget(
             name: "YapperTests",
             dependencies: ["Yapper"],
-            path: "Tests/YapperTests"
+            path: "Tests/YapperTests",
+            resources: [.copy("Fixtures")]
         )
     ]
 )

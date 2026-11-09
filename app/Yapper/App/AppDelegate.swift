@@ -4,14 +4,15 @@ import Combine
 @MainActor
 final class AppDelegate: NSObject, NSApplicationDelegate {
     private static let processingIndicatorDelay: Duration = .milliseconds(180)
-    private static let enhancedCleanupPromptDelay: Duration = .milliseconds(1_200)
 
     private var statusItem: NSStatusItem?
     private var runtimeStatusItem: NSMenuItem?
+    private var recordMenuItem: NSMenuItem?
+    private var copyMenuItem: NSMenuItem?
+    private var retryMenuItem: NSMenuItem?
     private var enhancedCleanupMenuItem: NSMenuItem?
     private var floatingPanel: FloatingPanel?
     private var processingIndicatorTask: Task<Void, Never>?
-    private var enhancedCleanupPromptTask: Task<Void, Never>?
     private var previousSoundState: RecordingState?
     private var modelStatusCancellable: AnyCancellable?
 
@@ -28,11 +29,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     nonisolated func applicationDidFinishLaunching(_ notification: Notification) {
         Task { @MainActor in
             UITestSupport.configureIfNeeded()
+            if UITestSupport.runBundledSpeechCheckIfRequested() { return }
             self.setupMenuBar()
             self.setupFloatingPanel()
             self.bindRuntime()
-            SparkleUpdateController.shared.start()
-            self.runtime.start()
+            if UserDefaults.standard.bool(forKey: WelcomeWindowController.completedKey) {
+                SparkleUpdateController.shared.start()
+            }
+            if UITestSupport.shouldOpenWelcomeOnLaunch() || (!UITestSupport.isEnabled && !UserDefaults.standard.bool(forKey: WelcomeWindowController.completedKey)) {
+                self.openWelcome()
+            }
+            if !UITestSupport.isEnabled { self.runtime.start() }
             NSApp.setActivationPolicy(UITestSupport.isEnabled ? .regular : .accessory)
             if UITestSupport.shouldOpenSettingsOnLaunch() {
                 SettingsWindowController.shared.show()
@@ -54,7 +61,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             button.imagePosition = .imageOnly
             button.imageScaling = .scaleProportionallyDown
             button.image = makeStatusBarImage()
-            button.image?.isTemplate = false
+            button.image?.isTemplate = true
             button.contentTintColor = nil
         }
 
@@ -72,7 +79,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             keyEquivalent: "r"
         )
         recordItem.keyEquivalentModifierMask = .command
+        recordMenuItem = recordItem
         menu.addItem(recordItem)
+        let cancelItem = NSMenuItem(title: "Cancel Recording", action: #selector(cancelRecording), keyEquivalent: ".")
+        cancelItem.keyEquivalentModifierMask = .command
+        menu.addItem(cancelItem)
+        copyMenuItem = NSMenuItem(title: "Copy Last Transcript", action: #selector(copyLastTranscript), keyEquivalent: "")
+        if let copyMenuItem { menu.addItem(copyMenuItem) }
+        retryMenuItem = NSMenuItem(title: "Retry Speech Model Download", action: #selector(retryModelLoading), keyEquivalent: "")
+        if let retryMenuItem { menu.addItem(retryMenuItem) }
+        menu.addItem(NSMenuItem(title: "Setup & Permissions…", action: #selector(openWelcome), keyEquivalent: ""))
 
         let prefsItem = NSMenuItem(
             title: "Settings",
@@ -131,7 +147,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         runtimeStatusItem?.title = statusLine(for: state)
         updateEnhancedCleanupMenuItem()
         updateStatusButton(for: state)
-        queueEnhancedCleanupPromptIfNeeded(for: state)
+        WelcomeWindowController.shared.update(state)
+        recordMenuItem?.title = state.recordingPhase == .recording ? "Finish Recording" : "Record"
+        copyMenuItem?.isEnabled = !runtime.lastTranscript.isEmpty
+        retryMenuItem?.isHidden = state.modelReady || state.recordingPhase == .loading
 
         let displayState = state.displayRecordingState
         playSoundIfNeeded(for: displayState)
@@ -157,13 +176,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     private func statusLine(for state: AppRuntimeState) -> String {
+        if case .failed(let message) = state.recordingPhase {
+            return "Yapper: \(message ?? "Something went wrong. Try again.")"
+        }
         if !state.modelReady {
-            return "Yapper: Loading model..."
+            return "Yapper: Preparing speech model \(Int(state.modelDownloadProgress * 100))%"
         }
 
         switch state.recordingPhase {
         case .loading:
-            return "Yapper: Loading model..."
+            return "Yapper: Preparing speech model \(Int(state.modelDownloadProgress * 100))%"
         case .recording:
             return "Yapper: Listening"
         case .processing:
@@ -219,7 +241,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private func scheduleProcessingIndicator(for state: AppRuntimeState) {
         processingIndicatorTask?.cancel()
         processingIndicatorTask = Task { @MainActor [weak self] in
-            try? await Task.sleep(for: Self.processingIndicatorDelay)
+            do { try await Task.sleep(for: Self.processingIndicatorDelay) } catch { return }
             guard let self,
                   self.runtime.state.displayRecordingState == .processing else { return }
             self.presentFloatingPanel(
@@ -256,29 +278,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             SoundManager.shared.play(.error)
         case .idle, .loading, .processing, .cancelled:
             break
-        }
-    }
-
-    private func queueEnhancedCleanupPromptIfNeeded(for state: AppRuntimeState) {
-        guard !UITestSupport.isEnabled,
-              enhancedCleanupPromptTask == nil,
-              state.modelReady,
-              state.recordingPhase == .idle,
-              LocalModelManager.shared.status == .notInstalled,
-              SettingsManager.shared.settings.enhancedCleanupPreference == .undecided else {
-            return
-        }
-
-        enhancedCleanupPromptTask = Task { @MainActor [weak self] in
-            try? await Task.sleep(for: Self.enhancedCleanupPromptDelay)
-            self?.enhancedCleanupPromptTask = nil
-            guard SettingsManager.shared.settings.enhancedCleanupPreference == .undecided,
-                  LocalModelManager.shared.status == .notInstalled,
-                  self?.runtime.state.recordingPhase == .idle else {
-                return
-            }
-
-            ModelDownloadWindowController.shared.show()
         }
     }
 
@@ -336,15 +335,22 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         guard !image.representations.isEmpty else { return nil }
 
-        let whiteImage = NSImage(size: image.size)
-        whiteImage.lockFocus()
-        let imageRect = NSRect(origin: .zero, size: image.size)
-        image.draw(in: imageRect, from: .zero, operation: .sourceOver, fraction: 1)
-        NSColor.white.setFill()
-        imageRect.fill(using: .sourceIn)
-        whiteImage.unlockFocus()
-        whiteImage.isTemplate = false
-        return whiteImage
+        image.isTemplate = true
+        return image
+    }
+
+    @objc private func cancelRecording() { runtime.cancelRecording() }
+
+    @objc private func copyLastTranscript() {
+        guard !runtime.lastTranscript.isEmpty else { return }
+        NSPasteboard.general.clearContents()
+        NSPasteboard.general.setString(runtime.lastTranscript, forType: .string)
+    }
+
+    @objc private func retryModelLoading() { runtime.retryModelLoading() }
+
+    @objc private func openWelcome() {
+        WelcomeWindowController.shared.show { [weak self] in self?.runtime.retryModelLoading() }
     }
 
     @objc private func toggleRecording() {
