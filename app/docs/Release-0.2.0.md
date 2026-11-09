@@ -46,19 +46,17 @@ Keyboard, and About panes. The generated project uses the resolved SwiftPM graph
 ## Stage and verify the release
 
 Download the `Yapper-macOS` artifact from the successful GitHub Actions run.
-Copy its versioned DMG, checksum, and `sparkle/appcast.xml` to
-`website/public/downloads/` and `website/public/appcast.xml` respectively. Copy the
-same DMG to `website/public/downloads/Yapper-latest.dmg`.
-
-Run this check with Python 3 and OpenSSL 1.1.1 or later:
+Its `dist/` directory contains the installer, checksum, native screenshots, and
+speech verification log. Copy `dist/sparkle/appcast.xml` beside the installer
+before running the release check:
 
 ```bash
-python3 app/scripts/verify-release.py website/public
+python3 app/scripts/verify-release.py <staging-directory>
 ```
 
-You can also pass a staging directory containing all four files. The script checks the
-appcast version, build, expected download URL, image header, byte count, checksum,
-and Ed25519 signature against the public key in `Info.plist`.
+The check requires Python 3 and OpenSSL 1.1.1 or later. It verifies the appcast
+version, build, download URL, disk image header, byte count, checksum, and
+Ed25519 signature against the public key in `Info.plist`.
 
 ## Signing and production publication
 

@@ -47,23 +47,6 @@ jobs:
             app/dist/sparkle/appcast.xml
             app/Package.resolved
           if-no-files-found: error
-  website:
-    if: ${{ github.event_name != 'workflow_dispatch' || !inputs.native_only }}
-    runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: website
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: npm
-          cache-dependency-path: website/package-lock.json
-      - run: npm ci
-      - run: npx tsc --noEmit
-      - run: npm run build
-
   native-ui:
     runs-on: macos-15
     timeout-minutes: 25

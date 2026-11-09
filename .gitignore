@@ -28,8 +28,5 @@ website/.vercel/
 .env.*
 !.env.example
 
-# Incremental TypeScript cache
-*.tsbuildinfo
-
 # Python verification cache
 __pycache__/
