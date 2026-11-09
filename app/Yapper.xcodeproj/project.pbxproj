@@ -13,7 +13,6 @@
 		1E86943453DC231FD3AC6284 /* SoundManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = EFAE4405EE17CA2DC36DC245 /* SoundManager.swift */; };
 		1F3A3273964D81774F1EF032 /* Yapper.app in Resources */ = {isa = PBXBuildFile; fileRef = 6BA08EA85A315683F4BD1502 /* Yapper.app */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		2175409BF6FC8C1E2F561DCC /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3C1516EA859EFB98DA178DFC /* SettingsView.swift */; };
-		2732BD08300BB56D63419748 /* ParakeetASR in Frameworks */ = {isa = PBXBuildFile; productRef = 2F836B8DB939DD772A87092A /* ParakeetASR */; };
 		276B6CFED0A74AB5C1EDD1AB /* MockLLMProcessor.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A7BE9BD36C2E957E6373832 /* MockLLMProcessor.swift */; };
 		2C569D59FC78E8640E430E73 /* PreviewCatalog.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA0B125F766957D05296C0D2 /* PreviewCatalog.swift */; };
 		33ABD23A05B66FD1DDA4E1F3 /* LLMProcessor.swift in Sources */ = {isa = PBXBuildFile; fileRef = E2DAAD9D893ED70F830705AF /* LLMProcessor.swift */; };
@@ -101,7 +100,6 @@
 			buildActionMask = 2147483647;
 			files = (
 				F25562C3AF8E16BBEF618EEC /* ParakeetStreamingASR in Frameworks */,
-				2732BD08300BB56D63419748 /* ParakeetASR in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -409,7 +407,6 @@
 			name = Yapper;
 			packageProductDependencies = (
 				EAB08871C10A9DD1323FDB3A /* ParakeetStreamingASR */,
-				2F836B8DB939DD772A87092A /* ParakeetASR */,
 			);
 			productName = Yapper;
 			productReference = 6BA08EA85A315683F4BD1502 /* Yapper.app */;
@@ -841,10 +838,6 @@
 /* End XCLocalSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
-		2F836B8DB939DD772A87092A /* ParakeetASR */ = {
-			isa = XCSwiftPackageProductDependency;
-			productName = ParakeetASR;
-		};
 		EAB08871C10A9DD1323FDB3A /* ParakeetStreamingASR */ = {
 			isa = XCSwiftPackageProductDependency;
 			productName = ParakeetStreamingASR;

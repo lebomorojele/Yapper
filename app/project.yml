@@ -29,8 +29,6 @@ targets:
     dependencies:
       - package: speech-swift
         product: ParakeetStreamingASR
-      - package: speech-swift
-        product: ParakeetASR
       - package: Sparkle
         product: Sparkle
     settings:
