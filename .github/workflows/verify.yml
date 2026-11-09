@@ -1,0 +1,46 @@
+name: Verify Yapper
+on:
+  push:
+    branches: [main, feat/yapper-evening-release]
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  macos:
+    runs-on: macos-15
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - run: swift --version
+      - run: swift test --package-path app
+      - run: swift build -c release --package-path app
+      - name: Package app
+        run: ALLOW_PLACEHOLDER_SPARKLE_KEY=1 app/scripts/package-dmg.sh
+      - name: Sign update feed
+        env:
+          SPARKLE_PRIVATE_KEY: ${{ secrets.SPARKLE_PRIVATE_KEY }}
+        run: app/scripts/generate-appcast.sh
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Yapper-macOS
+          path: |
+            app/dist/*.dmg
+            app/dist/*.sha256
+            app/dist/sparkle/appcast.xml
+          if-no-files-found: error
+  website:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: website
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: website/package-lock.json
+      - run: npm ci
+      - run: npx tsc --noEmit
+      - run: npm run build
