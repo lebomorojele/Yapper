@@ -21,8 +21,9 @@ fi
 
 mkdir -p "$RELEASES_DIR"
 
-latest_dmg="$(find "$DIST_DIR" -maxdepth 1 -name 'Yapper-*.dmg' -type f | sort | tail -n 1)"
-if [[ -z "$latest_dmg" ]]; then
+version="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$APP_ROOT/Yapper/Support/Info.plist")"
+latest_dmg="$DIST_DIR/Yapper-$version.dmg"
+if [[ ! -f "$latest_dmg" ]]; then
   echo "No Yapper DMG found in $DIST_DIR. Run app/scripts/package-dmg.sh first." >&2
   exit 1
 fi

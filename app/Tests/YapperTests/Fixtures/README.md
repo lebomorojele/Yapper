@@ -1,5 +1,5 @@
 `speech.wav` is the streaming ASR test recording from soniqo/speech-swift,
-revision 03920e17671fc79d59da1573923958304e233c42, distributed under its MIT license and resampled from 24 kHz to 16 kHz mono PCM.
+revision 03920e17671fc79d59da1573923958304e233c42, distributed under its Apache 2.0 license and resampled from 24 kHz to 16 kHz mono PCM.
 Source: https://github.com/soniqo/speech-swift/blob/03920e17671fc79d59da1573923958304e233c42/Tests/ParakeetStreamingASRTests/Resources/test_audio.wav
 
 The recording includes the phrases "guarantee" and "shipped tomorrow".

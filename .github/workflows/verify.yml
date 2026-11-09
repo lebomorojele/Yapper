@@ -21,6 +21,8 @@ jobs:
       - run: swift build -c release --package-path app
       - name: Package app
         run: ALLOW_PLACEHOLDER_SPARKLE_KEY=1 app/scripts/package-dmg.sh
+      - name: Launch the packaged app and capture native screens
+        run: app/scripts/smoke-bundle.sh
       - name: Sign update feed
         env:
           SPARKLE_PRIVATE_KEY: ${{ secrets.SPARKLE_PRIVATE_KEY }}
@@ -31,6 +33,8 @@ jobs:
           path: |
             app/dist/*.dmg
             app/dist/*.sha256
+            app/dist/*.png
+            app/dist/*-smoke.log
             app/dist/sparkle/appcast.xml
           if-no-files-found: error
   website:

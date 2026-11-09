@@ -33,10 +33,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             self.setupFloatingPanel()
             self.bindRuntime()
             SparkleUpdateController.shared.start()
-            if !UITestSupport.isEnabled && !UserDefaults.standard.bool(forKey: WelcomeWindowController.completedKey) {
+            if UITestSupport.shouldOpenWelcomeOnLaunch() || (!UITestSupport.isEnabled && !UserDefaults.standard.bool(forKey: WelcomeWindowController.completedKey)) {
                 self.openWelcome()
             }
-            self.runtime.start()
+            if !UITestSupport.isEnabled { self.runtime.start() }
             NSApp.setActivationPolicy(UITestSupport.isEnabled ? .regular : .accessory)
             if UITestSupport.shouldOpenSettingsOnLaunch() {
                 SettingsWindowController.shared.show()

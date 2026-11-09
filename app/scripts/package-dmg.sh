@@ -36,6 +36,8 @@ EOF
   exit 1
 fi
 
+swift build -c release --package-path "$APP_ROOT"
+
 VERSION="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$SOURCE_INFO_PLIST")"
 BUILD_NUMBER="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleVersion' "$SOURCE_INFO_PLIST")"
 DMG_PATH="$DIST_DIR/$APP_NAME-$VERSION.dmg"
