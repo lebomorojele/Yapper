@@ -114,7 +114,10 @@ if [[ -n "$NOTARY_PROFILE" ]]; then
   spctl --assess --type open --context context:primary-signature --verbose "$DMG_PATH"
 fi
 
-shasum -a 256 "$DMG_PATH" > "$DMG_PATH.sha256"
+(
+  cd "$DIST_DIR"
+  shasum -a 256 "$APP_NAME-$VERSION.dmg"
+) > "$DMG_PATH.sha256"
 
 cat <<EOF
 Built $APP_NAME $VERSION ($BUILD_NUMBER)

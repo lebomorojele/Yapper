@@ -5,7 +5,7 @@ on:
   pull_request:
   workflow_dispatch:
 concurrency:
-  group: yapper-verify-${{ github.ref }}
+  group: yapper-verify-${{ github.head_ref || github.ref_name }}
   cancel-in-progress: true
 permissions:
   contents: read

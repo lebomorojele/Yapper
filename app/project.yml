@@ -86,9 +86,8 @@ targets:
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.yapper.uitests
-        TEST_HOST: $(BUILT_PRODUCTS_DIR)/Yapper.app/Contents/MacOS/Yapper
-        BUNDLE_LOADER: $(TEST_HOST)
         SWIFT_VERSION: '6.0'
+        TEST_TARGET_NAME: Yapper
 schemes:
   Yapper:
     build:
