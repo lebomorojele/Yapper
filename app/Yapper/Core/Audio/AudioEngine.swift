@@ -28,6 +28,7 @@ final class AudioEngine: AudioEngineProtocol, @unchecked Sendable {
     var inputGain: Float = 1.0
 
     private var engine: AVAudioEngine?
+    private var converter: AVAudioConverter?
     private var isRunning = false
     private var silenceStart: Date?
 
@@ -50,20 +51,26 @@ final class AudioEngine: AudioEngineProtocol, @unchecked Sendable {
         )
     }
 
-    func start() {
-        queue.sync {
+    func start() throws {
+        try queue.sync {
             guard !isRunning else { return }
             
-            let settings = SettingsManager.shared.settings
-            self.silenceThreshold = settings.silenceThreshold
-            self.silenceDetectionEnabled = settings.silenceDetectionEnabled
-            self.inputGain = settings.inputGain
-
             let eng = AVAudioEngine()
             engine = eng
 
             let input = eng.inputNode
             let inputFormat = input.outputFormat(forBus: 0)
+
+            guard inputFormat.sampleRate > 0, inputFormat.channelCount > 0,
+                  let targetFormat else {
+                engine = nil
+                throw NSError(domain: "Yapper.Audio", code: 1, userInfo: [NSLocalizedDescriptionKey: "No microphone is available. Connect a microphone and try again."])
+            }
+            converter = AVAudioConverter(from: inputFormat, to: targetFormat)
+            guard converter != nil else {
+                engine = nil
+                throw NSError(domain: "Yapper.Audio", code: 2, userInfo: [NSLocalizedDescriptionKey: "This microphone format could not be converted. Try another input device."])
+            }
 
             input.installTap(onBus: 0, bufferSize: bufferSize, format: inputFormat) { [weak self] buffer, _ in
                 self?.processBuffer(buffer, inputFormat: inputFormat)
@@ -78,7 +85,10 @@ final class AudioEngine: AudioEngineProtocol, @unchecked Sendable {
                 rollingBars = Array(repeating: 0, count: meterBarCount)
                 print("[AudioEngine] Started — input format: \(inputFormat)")
             } catch {
-                print("[AudioEngine] Failed to start: \(error)")
+                input.removeTap(onBus: 0)
+                engine = nil
+                converter = nil
+                throw error
             }
         }
     }
@@ -89,6 +99,7 @@ final class AudioEngine: AudioEngineProtocol, @unchecked Sendable {
             engine?.stop()
             engine?.inputNode.removeTap(onBus: 0)
             engine = nil
+            converter = nil
             isRunning = false
             silenceStart = nil
             smoothedLevel = 0
@@ -134,15 +145,21 @@ final class AudioEngine: AudioEngineProtocol, @unchecked Sendable {
             guard let data = buffer.floatChannelData?[0] else { return }
             samples = Array(UnsafeBufferPointer(start: data, count: Int(buffer.frameLength)))
         } else {
-            guard let converter = AVAudioConverter(from: inputFormat, to: targetFormat) else { return }
+            guard let converter else { return }
 
             let ratio = targetSampleRate / inputFormat.sampleRate
-            let frameCount = AVAudioFrameCount(Double(buffer.frameLength) * ratio)
+            let frameCount = AVAudioFrameCount(ceil(Double(buffer.frameLength) * ratio)) + 32
             guard let converted = AVAudioPCMBuffer(pcmFormat: targetFormat, frameCapacity: frameCount) else { return }
 
             var error: NSError?
             let inputBuffer = buffer
+            var suppliedInput = false
             let inputBlock: AVAudioConverterInputBlock = { _, outStatus in
+                guard !suppliedInput else {
+                    outStatus.pointee = .noDataNow
+                    return nil
+                }
+                suppliedInput = true
                 outStatus.pointee = .haveData
                 return inputBuffer
             }
@@ -156,7 +173,7 @@ final class AudioEngine: AudioEngineProtocol, @unchecked Sendable {
 
         guard !samples.isEmpty else { return }
         
-        let processedSamples = inputGain > 1.0 ? samples.map { $0 * inputGain } : samples
+        let processedSamples = inputGain != 1.0 ? samples.map { max(-1, min(1, $0 * inputGain)) } : samples
         onAudio?(processedSamples)
     }
 

@@ -27,3 +27,6 @@ website/.vercel/
 .env
 .env.*
 !.env.example
+
+# Incremental TypeScript cache
+*.tsbuildinfo

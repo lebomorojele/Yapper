@@ -27,22 +27,17 @@ final class ParakeetTranscriber: TranscriberProtocol, @unchecked Sendable {
 
     // MARK: - Session Lifecycle
 
-    func start() {
-        queue.sync {
+    func start() throws {
+        try queue.sync {
             guard !isRunning else { return }
-            isRunning = true
             accumulatedText = ""
 
             guard let model else {
-                print("[Parakeet] Model not loaded — cannot start session")
-                return
+                throw NSError(domain: "Yapper.Transcription", code: 1, userInfo: [NSLocalizedDescriptionKey: "The speech model is not ready. Try loading it again from the Yapper menu."])
             }
 
-            do {
-                session = try model.createSession()
-            } catch {
-                print("[Parakeet] Failed to create session: \(error)")
-            }
+            session = try model.createSession()
+            isRunning = true
         }
     }
 

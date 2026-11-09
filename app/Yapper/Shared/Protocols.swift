@@ -36,7 +36,7 @@ protocol AudioEngineProtocol {
     var onSilence: (@Sendable () -> Void)? { get set }
     var onMeter: (@Sendable (AudioMeter) -> Void)? { get set }
 
-    func start()
+    func start() throws
     func stop()
     var silenceThreshold: TimeInterval { get set }
     var silenceDetectionEnabled: Bool { get set }
@@ -48,7 +48,7 @@ protocol TranscriberProtocol {
     var onFinal: (@Sendable (String) -> Void)? { get set }
 
     func loadModel() async throws
-    func start()
+    func start() throws
     func stop() -> String
     func process(samples: [Float])
 }

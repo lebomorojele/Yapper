@@ -12,8 +12,12 @@ final class MockAudioEngine: AudioEngineProtocol {
     var inputGain: Float = 1.0
 
     var isRunning = false
+    var startError: Error?
 
-    func start() { isRunning = true }
+    func start() throws {
+        if let startError { throw startError }
+        isRunning = true
+    }
     func stop() { isRunning = false }
 
     func simulateSilence() { onSilence?() }
@@ -45,10 +49,14 @@ final class MockTranscriber: TranscriberProtocol {
 final class MockTextCleanupProcessor: TextCleanupProcessing, @unchecked Sendable {
     var output: String?
     var error: Error?
+    var delay: Duration = .zero
+    var onClean: (@Sendable () -> Void)?
     private(set) var inputs: [String] = []
 
     func clean(text: String) async throws -> String {
         inputs.append(text)
+        onClean?()
+        try await Task.sleep(for: delay)
         if let error {
             throw error
         }

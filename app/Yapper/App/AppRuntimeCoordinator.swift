@@ -16,6 +16,7 @@ final class AppRuntimeCoordinator {
 
     private var completionDismissTask: Task<Void, Never>?
     private var restartAfterProcessing = false
+    private(set) var lastTranscript = ""
 
     init(
         dictationController: DictationControlling,
@@ -45,6 +46,17 @@ final class AppRuntimeCoordinator {
     func appDidBecomeActive() {
         refreshPermissions()
         hotkeyManager.refreshMonitoringState()
+    }
+
+    func retryModelLoading() {
+        guard !state.modelReady, state.recordingPhase != .loading else { return }
+        state.recordingPhase = .loading
+        loadModel()
+    }
+
+    func cancelRecording() {
+        guard state.recordingPhase == .recording || state.recordingPhase == .processing else { return }
+        cleanupForDisposition(.cancel)
     }
 
     func handleMenuToggleRecording() {
@@ -164,8 +176,13 @@ final class AppRuntimeCoordinator {
 
     private func startRecording() {
         guard state.modelReady else {
-            state.recordingPhase = .failed("Model not ready")
-            scheduleCompletionDismiss()
+            retryModelLoading()
+            return
+        }
+
+        refreshPermissions()
+        guard state.permissions.microphone == .authorized else {
+            state.recordingPhase = .failed("Allow Microphone access in System Settings → Privacy & Security.")
             return
         }
 
@@ -186,6 +203,8 @@ final class AppRuntimeCoordinator {
     }
 
     private func handleFinishedSession(_ result: RecordingSessionResult) {
+        guard state.recordingPhase == .recording || state.recordingPhase == .processing else { return }
+        if !result.transcript.isEmpty { lastTranscript = result.transcript }
         state.session = nil
         state.recordingStartTime = nil
 
@@ -195,7 +214,9 @@ final class AppRuntimeCoordinator {
             return
         }
 
-        state.recordingPhase = .completed(result.insertionOutcome)
+        state.recordingPhase = result.transcript.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+            ? .failed("No speech heard. Check your microphone and try again.")
+            : .completed(result.insertionOutcome)
         scheduleCompletionDismiss()
     }
 
@@ -219,7 +240,6 @@ final class AppRuntimeCoordinator {
             scheduleCompletionDismiss()
         case .failure(let error):
             state.recordingPhase = .failed(error)
-            scheduleCompletionDismiss()
         case .stop, .completion:
             break
         }
@@ -231,7 +251,7 @@ final class AppRuntimeCoordinator {
     private func scheduleCompletionDismiss() {
         completionDismissTask?.cancel()
         completionDismissTask = Task { [weak self] in
-            try? await Task.sleep(nanoseconds: 1_200_000_000)
+            do { try await Task.sleep(nanoseconds: 1_200_000_000) } catch { return }
             await MainActor.run {
                 self?.resetToIdle()
             }

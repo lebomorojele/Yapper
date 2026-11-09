@@ -101,6 +101,7 @@ struct PillContentView: View {
             mode: mode,
             state: state,
             partialTranscript: partialTranscript,
+            audioMeter: audioMeter,
             resolvedWidth: resolvedWidth
         )
     }
@@ -108,10 +109,12 @@ struct PillContentView: View {
 
 private struct DictationPebble: View {
     @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     let mode: PebbleMode
     let state: RecordingState
     let partialTranscript: String
+    let audioMeter: AudioMeter
     let resolvedWidth: CGFloat?
 
     @State private var animateDots = false
@@ -125,7 +128,7 @@ private struct DictationPebble: View {
     }
 
     private var foregroundColor: Color {
-        colorScheme == .dark ? .white.opacity(0.80) : .black.opacity(0.40)
+        colorScheme == .dark ? .white.opacity(0.92) : .black.opacity(0.76)
     }
 
     var body: some View {
@@ -144,6 +147,16 @@ private struct DictationPebble: View {
                 } else {
                     SmoothTranscriptStrip(words: liveTranscriptWords, foregroundColor: foregroundColor)
                 }
+            } else if state == .listening {
+                HStack(alignment: .center, spacing: 3) {
+                    ForEach(Array(audioMeter.bars.enumerated()), id: \.offset) { _, level in
+                        Capsule().fill(foregroundColor)
+                            .frame(width: 3, height: 3 + CGFloat(max(0, min(1, level))) * 12)
+                    }
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .animation(reduceMotion ? nil : .easeOut(duration: 0.1), value: audioMeter)
+                .accessibilityLabel("Yapper listening")
             } else {
                 HStack(spacing: 4) {
                     ForEach(0..<3, id: \.self) { index in
@@ -169,12 +182,12 @@ private struct DictationPebble: View {
         .pebbleGlass(isActive: dotsMove)
         .animation(.easeOut(duration: 0.18), value: mode)
         .onAppear {
-            animateDots = true
+            animateDots = !reduceMotion
         }
         .onChange(of: mode) { _, _ in
             animateDots = false
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
-                animateDots = true
+                animateDots = !reduceMotion
             }
         }
     }
@@ -263,6 +276,7 @@ private struct TranscriptToken: Identifiable, Equatable {
 }
 
 private struct PebbleGlassModifier: ViewModifier {
+    @Environment(\.colorScheme) private var colorScheme
     var isActive = false
 
     func body(content: Content) -> some View {
@@ -272,9 +286,9 @@ private struct PebbleGlassModifier: ViewModifier {
                     Capsule(style: .continuous)
                         .fill(.regularMaterial)
                     Capsule(style: .continuous)
-                        .fill((isActive ? Color(red: 0.09, green: 0.75, blue: 0.73) : .white).opacity(isActive ? 0.18 : 0.58))
+                        .fill((isActive ? Color(red: 0.09, green: 0.75, blue: 0.73) : (colorScheme == .dark ? .black : .white)).opacity(isActive ? 0.18 : 0.45))
                     LinearGradient(
-                        colors: [.white.opacity(0.72), .white.opacity(0.16)],
+                        colors: [.white.opacity(colorScheme == .dark ? 0.12 : 0.50), .white.opacity(0.05)],
                         startPoint: .top,
                         endPoint: .bottom
                     )

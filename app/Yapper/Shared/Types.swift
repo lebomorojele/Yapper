@@ -106,6 +106,7 @@ struct AppRuntimeState: Equatable, Sendable {
     var recordingStartTime: Date? = nil
 
     var displayRecordingState: RecordingState {
+        if case .failed = recordingPhase { return .failed }
         if !modelReady {
             return .loading
         }

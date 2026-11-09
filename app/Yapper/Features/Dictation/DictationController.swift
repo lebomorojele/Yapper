@@ -42,7 +42,7 @@ final class DictationController: @unchecked Sendable {
 
         audioEngine.onSilence = { [weak self] in
             guard let self, self.isRecording, self.activeConfiguration?.autoStopOnSilence == true else { return }
-            self.stopRecording()
+            DispatchQueue.main.async { [weak self] in self?.stopRecording() }
         }
 
         audioEngine.onMeter = { [weak self] meter in
@@ -75,7 +75,7 @@ final class DictationController: @unchecked Sendable {
     }
 
     func startRecording(configuration: RecordingSessionConfiguration) {
-        guard !isRecording else { return }
+        guard !isRecording, activeSession == nil else { return }
         isRecording = true
         activeConfiguration = configuration
         activeSession = RecordingSession()
@@ -86,8 +86,13 @@ final class DictationController: @unchecked Sendable {
         audioEngine.silenceDetectionEnabled = configuration.autoStopOnSilence && settings.silenceDetectionEnabled
         audioEngine.inputGain = settings.inputGain
 
-        transcriber.start()
-        audioEngine.start()
+        do {
+            try transcriber.start()
+            try audioEngine.start()
+        } catch {
+            discardRecording()
+            onError?(error)
+        }
     }
 
     func stopRecording() {
@@ -110,8 +115,9 @@ final class DictationController: @unchecked Sendable {
             return
         }
 
-        Task { [weak self] in
-            await self?.finishInsertedSession(rawTranscript: finalText)
+        let sessionID = activeSession?.id
+        Task { @MainActor [weak self] in
+            await self?.finishInsertedSession(rawTranscript: finalText, sessionID: sessionID)
         }
     }
 
@@ -131,7 +137,8 @@ final class DictationController: @unchecked Sendable {
         activeSession = nil
     }
 
-    private func finishInsertedSession(rawTranscript: String) async {
+    private func finishInsertedSession(rawTranscript: String, sessionID: UUID?) async {
+        guard activeSession?.id == sessionID else { return }
         let trimmed = rawTranscript.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else {
             finishSession(transcript: trimmed, insertionOutcome: nil)
@@ -143,6 +150,7 @@ final class DictationController: @unchecked Sendable {
         if settings.cleanupEnabled {
             let fastOutput = await cleanedTextUsingHeuristic(from: trimmed)
             guard shouldUseModelCleanup(for: trimmed, settings: settings) else {
+                guard activeSession?.id == sessionID else { return }
                 let insertionOutcome = textInserter.insert(text: fastOutput, method: settings.insertionMethod)
                 finishSession(transcript: fastOutput, insertionOutcome: insertionOutcome)
                 return
@@ -160,6 +168,7 @@ final class DictationController: @unchecked Sendable {
             outputText = trimmed
         }
 
+        guard activeSession?.id == sessionID else { return }
         let insertionOutcome = textInserter.insert(text: outputText, method: settings.insertionMethod)
         finishSession(transcript: outputText, insertionOutcome: insertionOutcome)
     }
