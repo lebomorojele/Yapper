@@ -18,6 +18,7 @@ final class DictationController {
 
     private(set) var isModelLoaded = false
     private var isRecording = false
+    private var processingTask: Task<Void, Never>?
     private var activeConfiguration: RecordingSessionConfiguration?
     private var activeSession: RecordingSession?
 
@@ -82,6 +83,7 @@ final class DictationController {
 
     func startRecording(configuration: RecordingSessionConfiguration) {
         guard !isRecording, activeSession == nil else { return }
+        processingTask = nil
         isRecording = true
         activeConfiguration = configuration
         let session = RecordingSession()
@@ -122,12 +124,14 @@ final class DictationController {
         }
 
         let sessionID = activeSession?.id
-        Task { @MainActor [weak self] in
+        processingTask = Task { @MainActor [weak self] in
             await self?.finishInsertedSession(rawTranscript: finalText, sessionID: sessionID)
         }
     }
 
     func discardRecording() {
+        processingTask?.cancel()
+        processingTask = nil
         guard isRecording else {
             activeConfiguration = nil
             activeSession = nil

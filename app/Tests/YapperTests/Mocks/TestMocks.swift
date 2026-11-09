@@ -52,12 +52,16 @@ final class MockTextCleanupProcessor: TextCleanupProcessing, @unchecked Sendable
     var error: Error?
     var delay: Duration = .zero
     var onClean: (@Sendable () -> Void)?
+    var onCancellation: (@Sendable () -> Void)?
     private(set) var inputs: [String] = []
 
     func clean(text: String) async throws -> String {
         inputs.append(text)
         onClean?()
-        try await Task.sleep(for: delay)
+        do { try await Task.sleep(for: delay) } catch {
+            if error is CancellationError { onCancellation?() }
+            throw error
+        }
         if let error {
             throw error
         }

@@ -300,4 +300,25 @@ final class DictationControllerTests: XCTestCase {
         context.sut.discardRecording()
     }
 
+    @MainActor
+    func testDiscardCancelsCleanupWork() async {
+        let originalSettings = SettingsManager.shared.settings
+        SettingsManager.shared.update { $0.cleanupEnabled = true; $0.modelCleanupWordThreshold = 0 }
+        defer { SettingsManager.shared.settings = originalSettings }
+        let context = makeSUT()
+        let started = expectation(description: "Cleanup started")
+        let cancelled = expectation(description: "Cleanup cancelled")
+        context.cleanup.delay = .seconds(5)
+        context.cleanup.onClean = { started.fulfill() }
+        context.cleanup.onCancellation = { cancelled.fulfill() }
+        context.sut.startRecording(configuration: .init(autoStopOnSilence: true, shouldInsertText: true))
+        context.sut.stopRecording()
+        let startResult = await XCTWaiter.fulfillment(of: [started], timeout: 1)
+        XCTAssertEqual(startResult, .completed)
+        context.sut.discardRecording()
+        let cancelResult = await XCTWaiter.fulfillment(of: [cancelled], timeout: 1)
+        XCTAssertEqual(cancelResult, .completed)
+        XCTAssertNil(context.inserter.insertedText)
+    }
+
 }
