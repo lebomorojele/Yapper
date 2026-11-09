@@ -1,11 +1,14 @@
 import AppKit
 import SwiftUI
 
-final class SettingsWindowController: NSWindowController {
+@MainActor
+final class SettingsWindowController: NSWindowController, NSWindowDelegate {
     static let shared = SettingsWindowController()
 
+    private let preferences = PreferencesViewModel()
+
     private init() {
-        let view = SettingsView()
+        let view = SettingsView(model: preferences)
         
         let window = NSWindow(
             contentRect: NSRect(x: 0, y: 0, width: 700, height: 700),
@@ -22,13 +25,19 @@ final class SettingsWindowController: NSWindowController {
         window.titlebarSeparatorStyle = .automatic
         
         super.init(window: window)
+        window.delegate = self
     }
     
     required init?(coder: NSCoder) {
         fatalError("init(coder:) has not been implemented")
     }
     
+    func windowWillClose(_ notification: Notification) {
+        preferences.stopAudioMeter()
+    }
+
     func show() {
+        preferences.startAudioMeter()
         window?.makeKeyAndOrderFront(nil)
         NSApp.activate(ignoringOtherApps: true)
     }

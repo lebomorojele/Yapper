@@ -52,3 +52,26 @@ jobs:
       - run: npm ci
       - run: npx tsc --noEmit
       - run: npm run build
+
+  native-ui:
+    runs-on: macos-15
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - name: Generate the native Xcode project
+        working-directory: app
+        run: |
+          command -v xcodegen || brew install xcodegen
+          xcodegen generate
+      - name: Exercise native settings screens
+        run: >-
+          xcodebuild test -project app/Yapper.xcodeproj -scheme Yapper
+          -destination 'platform=macOS' -only-testing:YapperUITests
+          -resultBundlePath app/dist/NativeUI.xcresult CODE_SIGNING_ALLOWED=NO
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: Yapper-native-ui
+          path: |
+            app/dist/NativeUI.xcresult
+            app/Yapper.xcodeproj

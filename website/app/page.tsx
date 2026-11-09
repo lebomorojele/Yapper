@@ -35,7 +35,7 @@ export default function Home() {
       </a>
       <header className="site-header">
         <a href="#" className="wordmark" aria-label="Yapper home">
-          <Image src="/images/yapper-icon.png" alt="" width={34} height={34} />
+          <Image src="/images/yapper-mark.png" alt="" width={34} height={34} />
           yapper<span className="brand-period">✳</span>
         </a>
         <nav aria-label="Main navigation">

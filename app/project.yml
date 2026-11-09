@@ -23,9 +23,20 @@ targets:
         excludes:
           - "Assets.xcassets/**"
           - "Support/**"
+          - "BrandResources/**"
+          - "LocalInference/**"
+          - "MenuBarResources/**"
+          - "Sounds/**"
     resources:
       - path: Yapper/Assets.xcassets
-      - path: Yapper/Support
+      - path: Yapper/BrandResources
+        type: folder
+      - path: Yapper/LocalInference
+        type: folder
+      - path: Yapper/MenuBarResources
+        type: folder
+      - path: Yapper/Sounds
+        type: folder
     dependencies:
       - package: speech-swift
         product: ParakeetStreamingASR
@@ -34,9 +45,9 @@ targets:
     settings:
       base:
         PRODUCT_NAME: Yapper
-        PRODUCT_BUNDLE_IDENTIFIER: com.yapper.app
-        MARKETING_VERSION: "0.3"
-        CURRENT_PROJECT_VERSION: "1"
+        PRODUCT_BUNDLE_IDENTIFIER: com.yapper.party
+        MARKETING_VERSION: "0.2.0"
+        CURRENT_PROJECT_VERSION: "2"
         INFOPLIST_FILE: Yapper/Support/Info.plist
         CODE_SIGN_ENTITLEMENTS: Yapper/Support/Yapper.entitlements
         ENABLE_HARDENED_RUNTIME: YES
@@ -51,9 +62,12 @@ targets:
     platform: macOS
     sources:
       - path: Tests/YapperTests
+        excludes: ["Fixtures/**"]
+    resources:
+      - path: Tests/YapperTests/Fixtures
+        type: folder
     dependencies:
       - target: Yapper
-        embed: true
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.yapper.tests
@@ -68,10 +82,21 @@ targets:
       - path: Tests/YapperUITests
     dependencies:
       - target: Yapper
-        embed: true
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.yapper.uitests
         TEST_HOST: "$(BUILT_PRODUCTS_DIR)/Yapper.app/Contents/MacOS/Yapper"
         BUNDLE_LOADER: "$(TEST_HOST)"
         SWIFT_VERSION: "6.0"
+
+schemes:
+  Yapper:
+    build:
+      targets:
+        Yapper: all
+    test:
+      environmentVariables:
+        YAPPER_UI_TEST_MODE: "1"
+      targets:
+        - YapperTests
+        - YapperUITests

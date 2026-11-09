@@ -7,7 +7,12 @@ final class RealTranscriptionTests: XCTestCase {
         guard ProcessInfo.processInfo.environment["YAPPER_RUN_STT_INTEGRATION"] == "1" else {
             throw XCTSkip("Set YAPPER_RUN_STT_INTEGRATION=1 to download the speech model and run real recognition.")
         }
-        let url = try XCTUnwrap(Bundle.module.url(forResource: "speech", withExtension: "wav", subdirectory: "Fixtures"))
+        #if SWIFT_PACKAGE
+        let bundle = Bundle.module
+        #else
+        let bundle = Bundle(for: Self.self)
+        #endif
+        let url = try XCTUnwrap(bundle.url(forResource: "speech", withExtension: "wav", subdirectory: "Fixtures"))
         let file = try AVAudioFile(forReading: url)
         XCTAssertEqual(file.processingFormat.sampleRate, 16_000)
         XCTAssertEqual(file.processingFormat.channelCount, 1)

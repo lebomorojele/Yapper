@@ -41,7 +41,6 @@ final class PreferencesViewModel: ObservableObject {
                 self.inputLevel = level
             }
         }
-        audioLevelMonitor.start(deviceID: settings.selectedAudioDeviceId)
     }
 
     func binding<Value>(
@@ -57,6 +56,16 @@ final class PreferencesViewModel: ObservableObject {
                 }
             }
         )
+    }
+
+    func startAudioMeter() {
+        guard selectedPane == .audio, !UITestSupport.isEnabled else { return }
+        audioLevelMonitor.start(deviceID: settings.selectedAudioDeviceId)
+    }
+
+    func stopAudioMeter() {
+        audioLevelMonitor.stop()
+        inputLevel = 0
     }
 
     func launchAtLoginBinding() -> Binding<Bool> {
@@ -82,7 +91,7 @@ final class PreferencesViewModel: ObservableObject {
             set: { newValue in
                 self.settings.selectedAudioDeviceId = newValue.isEmpty ? nil : newValue
                 self.persist()
-                self.audioLevelMonitor.start(deviceID: self.settings.selectedAudioDeviceId)
+                self.startAudioMeter()
             }
         )
     }
@@ -106,7 +115,11 @@ final class PreferencesViewModel: ObservableObject {
 }
 
 struct SettingsView: View {
-    @StateObject private var model = PreferencesViewModel()
+    @StateObject private var model: PreferencesViewModel
+
+    init(model: PreferencesViewModel = PreferencesViewModel()) {
+        _model = StateObject(wrappedValue: model)
+    }
     @State private var columnVisibility = NavigationSplitViewVisibility.automatic
 
     var body: some View {
@@ -378,6 +391,8 @@ private struct AudioPreferencesPane: View {
         .formStyle(.grouped)
         .navigationTitle("Audio")
         .accessibilityIdentifier("settings.pane.audio")
+        .onAppear { model.startAudioMeter() }
+        .onDisappear { model.stopAudioMeter() }
     }
 }
 
@@ -421,7 +436,7 @@ private struct AboutPreferencesPane: View {
                     .foregroundStyle(.secondary)
             }
 
-            Text("Version 2.0")
+            Text("Version \(Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "0.2.0")")
                 .foregroundStyle(.secondary)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -435,14 +450,25 @@ private final class SettingsAudioLevelMonitor: NSObject, AVCaptureAudioDataOutpu
 
     private let session = AVCaptureSession()
     private let sessionQueue = DispatchQueue(label: "com.yapper.settings-audio-meter")
+    private var wantsMonitoring = false
 
     func start(deviceID: String?) {
         sessionQueue.async { [weak self] in
+            self?.wantsMonitoring = true
             self?.configureAndStart(deviceID: deviceID)
         }
     }
 
+    func stop() {
+        sessionQueue.async { [weak self] in
+            self?.wantsMonitoring = false
+            self?.stopLocked()
+            self?.publish(level: 0)
+        }
+    }
+
     private func configureAndStart(deviceID: String?) {
+        guard wantsMonitoring else { return }
         switch AVCaptureDevice.authorizationStatus(for: .audio) {
         case .authorized:
             break
@@ -452,7 +478,9 @@ private final class SettingsAudioLevelMonitor: NSObject, AVCaptureAudioDataOutpu
                     self?.publish(level: 0)
                     return
                 }
-                self?.start(deviceID: deviceID)
+                self?.sessionQueue.async { [weak self] in
+                    self?.configureAndStart(deviceID: deviceID)
+                }
             }
             return
         case .denied, .restricted:
