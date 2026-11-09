@@ -6,23 +6,24 @@ import CoreAudio
 
 final class AudioEngine: AudioEngineProtocol, @unchecked Sendable {
     private let queue = DispatchQueue(label: "com.yapper.audioengine")
+    private let callbackLock = NSLock()
     
     private var _onAudio: (@Sendable ([Float]) -> Void)?
     var onAudio: (@Sendable ([Float]) -> Void)? {
-        get { queue.sync { _onAudio } }
-        set { queue.sync { _onAudio = newValue } }
+        get { callbackLock.withLock { _onAudio } }
+        set { callbackLock.withLock { _onAudio = newValue } }
     }
 
     private var _onSilence: (@Sendable () -> Void)?
     var onSilence: (@Sendable () -> Void)? {
-        get { queue.sync { _onSilence } }
-        set { queue.sync { _onSilence = newValue } }
+        get { callbackLock.withLock { _onSilence } }
+        set { callbackLock.withLock { _onSilence = newValue } }
     }
 
     private var _onMeter: (@Sendable (AudioMeter) -> Void)?
     var onMeter: (@Sendable (AudioMeter) -> Void)? {
-        get { queue.sync { _onMeter } }
-        set { queue.sync { _onMeter = newValue } }
+        get { callbackLock.withLock { _onMeter } }
+        set { callbackLock.withLock { _onMeter = newValue } }
     }
 
     var silenceThreshold: TimeInterval = 1.5
@@ -78,13 +79,13 @@ final class AudioEngine: AudioEngineProtocol, @unchecked Sendable {
                 self?.processBuffer(buffer, inputFormat: inputFormat)
             }
 
+            silenceStart = nil
+            smoothedLevel = 0
+            smoothedPeak = 0
+            rollingBars = Array(repeating: 0, count: meterBarCount)
             do {
                 try eng.start()
                 isRunning = true
-                silenceStart = nil
-                smoothedLevel = 0
-                smoothedPeak = 0
-                rollingBars = Array(repeating: 0, count: meterBarCount)
                 print("[AudioEngine] Started — input format: \(inputFormat)")
             } catch {
                 input.removeTap(onBus: 0)
