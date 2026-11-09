@@ -69,21 +69,28 @@ The website remains at its original version. This release work is limited to the
 macOS app. Obtain explicit confirmation before triggering a Coolify deployment,
 as required by the VPS working agreements.
 
-## Candidate evidence
+## Verified release
 
-The packaged candidate was built and verified in
-[run 42708767424](https://github.com/lebomorojele/Yapper/actions/runs/42708767424).
-Its macOS job passed unit tests, real model inference, isolated bundle inference,
-native screen capture, and DMG packaging. The original native UI check in that run
-failed because it queried a container identifier SwiftUI does not expose.
-The corrected UI check uses visible windows and controls.
+[Run 42713842237](https://github.com/lebomorojele/Yapper/actions/runs/42713842237)
+passed all app checks:
 
-The installer is 15,921,003 bytes. SHA-256:
+- 47 unit tests, including cancellation of a real cleanup child process.
+- Production Core ML recognition of the 20-second speech recording.
+- Recognition inside the packaged app with the build directory hidden.
+- Native setup and settings UI tests, including Audio, Keyboard, and About navigation.
+- Release compilation, native window capture, and DMG packaging.
+
+The installer is 15,913,564 bytes. SHA-256:
 
 ```text
-81204fd91ced00f6fd20e837de577b919e43077d5ac2eb50876bfdab899937a1
+743332b0b9179a754f386786f6ec48e8d3610eedd61b4b642b7abe28e6da0fcb
 ```
 
 The appcast signature verifies against the public key embedded in the app's
-source plist. The installed app sources match commit `0c3949b`. The staged
-lockfile records the complete dependency graph that the successful build used.
+source plist. The installed app sources match commit `d7d8d3b`. The website is
+unchanged from `main`.
+
+Pre-existing verification problems corrected during this release were the
+Swift 6 XCTest setup, incomplete dependency lockfile, stale Xcode project,
+UI-test host configuration, and settings selectors that queried the wrong
+native accessibility attributes. No failures remain in the app CI run above.
