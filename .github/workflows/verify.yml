@@ -4,6 +4,9 @@ on:
     branches: [main, feat/yapper-evening-release]
   pull_request:
   workflow_dispatch:
+concurrency:
+  group: yapper-verify-${{ github.ref }}
+  cancel-in-progress: true
 permissions:
   contents: read
 jobs:

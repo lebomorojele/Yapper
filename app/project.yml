@@ -2,10 +2,9 @@ name: Yapper
 options:
   bundleIdPrefix: com.yapper
   deploymentTarget:
-    macOS: "15.0"
-  xcodeVersion: "15.0"
+    macOS: '15.0'
+  xcodeVersion: '15.0'
   generateEmptyDirectories: true
-
 packages:
   speech-swift:
     url: https://github.com/soniqo/speech-swift
@@ -13,82 +12,83 @@ packages:
   Sparkle:
     url: https://github.com/sparkle-project/Sparkle
     exactVersion: 2.9.1
-
 targets:
   Yapper:
     type: application
     platform: macOS
     sources:
-      - path: Yapper
-        excludes:
-          - "Assets.xcassets/**"
-          - "Support/**"
-          - "BrandResources/**"
-          - "LocalInference/**"
-          - "MenuBarResources/**"
-          - "Sounds/**"
-    resources:
-      - path: Yapper/Assets.xcassets
-      - path: Yapper/BrandResources
-        type: folder
-      - path: Yapper/LocalInference
-        type: folder
-      - path: Yapper/MenuBarResources
-        type: folder
-      - path: Yapper/Sounds
-        type: folder
+    - path: Yapper
+      excludes:
+      - Assets.xcassets/**
+      - Support/**
+      - BrandResources/**
+      - LocalInference/**
+      - MenuBarResources/**
+      - Sounds/**
+    - path: Yapper/Assets.xcassets
+      buildPhase: resources
+    - path: Yapper/BrandResources
+      type: folder
+      buildPhase: resources
+    - path: Yapper/LocalInference
+      type: folder
+      buildPhase: resources
+    - path: Yapper/MenuBarResources
+      type: folder
+      buildPhase: resources
+    - path: Yapper/Sounds
+      type: folder
+      buildPhase: resources
     dependencies:
-      - package: speech-swift
-        product: ParakeetStreamingASR
-      - package: Sparkle
-        product: Sparkle
+    - package: speech-swift
+      product: ParakeetStreamingASR
+    - package: Sparkle
+      product: Sparkle
     settings:
       base:
         PRODUCT_NAME: Yapper
         PRODUCT_BUNDLE_IDENTIFIER: com.yapper.party
-        MARKETING_VERSION: "0.2.0"
-        CURRENT_PROJECT_VERSION: "2"
+        MARKETING_VERSION: 0.2.0
+        CURRENT_PROJECT_VERSION: '2'
         INFOPLIST_FILE: Yapper/Support/Info.plist
         CODE_SIGN_ENTITLEMENTS: Yapper/Support/Yapper.entitlements
-        ENABLE_HARDENED_RUNTIME: YES
+        ENABLE_HARDENED_RUNTIME: true
         CODE_SIGN_STYLE: Automatic
-        COMBINE_HIDPI_IMAGES: YES
+        COMBINE_HIDPI_IMAGES: true
         LD_RUNPATH_SEARCH_PATHS:
-          - "@executable_path/../Frameworks"
-        SWIFT_VERSION: "6.0"
-
+        - '@executable_path/../Frameworks'
+        SWIFT_VERSION: '6.0'
   YapperTests:
     type: bundle.unit-test
     platform: macOS
     sources:
-      - path: Tests/YapperTests
-        excludes: ["Fixtures/**"]
-    resources:
-      - path: Tests/YapperTests/Fixtures
-        type: folder
+    - path: Tests/YapperTests
+      excludes:
+      - Fixtures/**
+    - path: Tests/YapperTests/Fixtures
+      type: folder
+      buildPhase: resources
     dependencies:
-      - target: Yapper
+    - target: Yapper
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.yapper.tests
-        TEST_HOST: "$(BUILT_PRODUCTS_DIR)/Yapper.app/Contents/MacOS/Yapper"
-        BUNDLE_LOADER: "$(TEST_HOST)"
-        SWIFT_VERSION: "6.0"
-
+        TEST_HOST: $(BUILT_PRODUCTS_DIR)/Yapper.app/Contents/MacOS/Yapper
+        BUNDLE_LOADER: $(TEST_HOST)
+        SWIFT_VERSION: '6.0'
   YapperUITests:
     type: bundle.ui-testing
     platform: macOS
     sources:
-      - path: Tests/YapperUITests
+    - path: Tests/YapperUITests
     dependencies:
-      - target: Yapper
+    - target: Yapper
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.yapper.uitests
-        TEST_HOST: "$(BUILT_PRODUCTS_DIR)/Yapper.app/Contents/MacOS/Yapper"
-        BUNDLE_LOADER: "$(TEST_HOST)"
-        SWIFT_VERSION: "6.0"
-
+        TEST_HOST: $(BUILT_PRODUCTS_DIR)/Yapper.app/Contents/MacOS/Yapper
+        BUNDLE_LOADER: $(TEST_HOST)
+        SWIFT_VERSION: '6.0'
 schemes:
   Yapper:
     build:
@@ -96,7 +96,7 @@ schemes:
         Yapper: all
     test:
       environmentVariables:
-        YAPPER_UI_TEST_MODE: "1"
+        YAPPER_UI_TEST_MODE: '1'
       targets:
-        - YapperTests
-        - YapperUITests
+      - YapperTests
+      - YapperUITests
