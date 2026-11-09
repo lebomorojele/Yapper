@@ -2,7 +2,7 @@ import Foundation
 import AVFoundation
 @testable import Yapper
 
-final class MockAudioEngine: AudioEngineProtocol {
+final class MockAudioEngine: AudioEngineProtocol, @unchecked Sendable {
     var onAudio: (@Sendable ([Float]) -> Void)?
     var onSilence: (@Sendable () -> Void)?
     var onMeter: (@Sendable (AudioMeter) -> Void)?
@@ -26,7 +26,7 @@ final class MockAudioEngine: AudioEngineProtocol {
     }
 }
 
-final class MockTranscriber: TranscriberProtocol {
+final class MockTranscriber: TranscriberProtocol, @unchecked Sendable {
     var onLoadProgress: (@Sendable (Double) -> Void)?
     var onPartial: (@Sendable (String) -> Void)?
     var onFinal: (@Sendable (String) -> Void)?

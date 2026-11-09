@@ -283,4 +283,21 @@ final class DictationControllerTests: XCTestCase {
         context.sut.discardRecording()
     }
 
+    @MainActor
+    func testCallbacksFromDiscardedSessionCannotStopANewRecording() async {
+        let context = makeSUT()
+        let configuration = RecordingSessionConfiguration(autoStopOnSilence: true, shouldInsertText: true)
+        context.sut.startRecording(configuration: configuration)
+        let oldSilence = context.audio.onSilence
+        let oldPartial = context.transcriber.onPartial
+        context.sut.discardRecording()
+        context.sut.startRecording(configuration: configuration)
+        oldPartial?("Words from the previous recording")
+        oldSilence?()
+        await Task.yield()
+        XCTAssertTrue(context.audio.isRunning)
+        XCTAssertNil(context.inserter.insertedText)
+        context.sut.discardRecording()
+    }
+
 }

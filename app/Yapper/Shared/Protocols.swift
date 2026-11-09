@@ -1,5 +1,6 @@
 import Foundation
 
+@MainActor
 protocol DictationControlling: AnyObject, Sendable {
     var onPartialTranscript: (@Sendable (String) -> Void)? { get set }
     var onSessionFinished: (@Sendable (RecordingSessionResult) -> Void)? { get set }
@@ -32,7 +33,7 @@ protocol PermissionManaging: AnyObject, Sendable {
     func requestInputMonitoringPermission()
 }
 
-protocol AudioEngineProtocol {
+protocol AudioEngineProtocol: Sendable {
     var onAudio: (@Sendable ([Float]) -> Void)? { get set }
     var onSilence: (@Sendable () -> Void)? { get set }
     var onMeter: (@Sendable (AudioMeter) -> Void)? { get set }
@@ -44,7 +45,7 @@ protocol AudioEngineProtocol {
     var inputGain: Float { get set }
 }
 
-protocol TranscriberProtocol {
+protocol TranscriberProtocol: Sendable {
     var onLoadProgress: (@Sendable (Double) -> Void)? { get set }
     var onPartial: (@Sendable (String) -> Void)? { get set }
     var onFinal: (@Sendable (String) -> Void)? { get set }

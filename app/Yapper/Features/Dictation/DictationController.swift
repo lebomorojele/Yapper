@@ -1,6 +1,7 @@
 import Foundation
 
-final class DictationController: @unchecked Sendable {
+@MainActor
+final class DictationController {
     private var audioEngine: AudioEngineProtocol
     private var transcriber: TranscriberProtocol
     private var textCleanupProcessor: TextCleanupProcessing
@@ -19,7 +20,6 @@ final class DictationController: @unchecked Sendable {
     private var isRecording = false
     private var activeConfiguration: RecordingSessionConfiguration?
     private var activeSession: RecordingSession?
-    private var currentTranscript = ""
 
     init(
         audioEngine: AudioEngineProtocol,
@@ -38,31 +38,33 @@ final class DictationController: @unchecked Sendable {
 
     private func wireCallbacks() {
         transcriber.onLoadProgress = { [weak self] progress in
-            self?.onModelProgress?(progress)
+            Task { @MainActor in self?.onModelProgress?(progress) }
         }
-        audioEngine.onAudio = { [weak self] samples in
-            self?.transcriber.process(samples: samples)
-        }
+        let transcriber = self.transcriber
+        audioEngine.onAudio = { samples in transcriber.process(samples: samples) }
+    }
 
+    private func wireSessionCallbacks(sessionID: UUID) {
         audioEngine.onSilence = { [weak self] in
-            guard let self, self.isRecording, self.activeConfiguration?.autoStopOnSilence == true else { return }
-            DispatchQueue.main.async { [weak self] in self?.stopRecording() }
+            Task { @MainActor in
+                guard let self, self.activeSession?.id == sessionID,
+                      self.isRecording, self.activeConfiguration?.autoStopOnSilence == true else { return }
+                self.stopRecording()
+            }
         }
-
         audioEngine.onMeter = { [weak self] meter in
-            self?.activeSession?.meter = meter
-            self?.onAudioMeter?(meter)
+            Task { @MainActor in
+                guard let self, self.activeSession?.id == sessionID, self.isRecording else { return }
+                self.activeSession?.meter = meter
+                self.onAudioMeter?(meter)
+            }
         }
-
         transcriber.onPartial = { [weak self] text in
-            guard let self else { return }
-            self.currentTranscript = text
-            self.activeSession?.partialTranscript = text
-            self.onPartialTranscript?(text)
-        }
-
-        transcriber.onFinal = { [weak self] text in
-            self?.currentTranscript = text
+            Task { @MainActor in
+                guard let self, self.activeSession?.id == sessionID, self.isRecording else { return }
+                self.activeSession?.partialTranscript = text
+                self.onPartialTranscript?(text)
+            }
         }
     }
 
@@ -82,8 +84,9 @@ final class DictationController: @unchecked Sendable {
         guard !isRecording, activeSession == nil else { return }
         isRecording = true
         activeConfiguration = configuration
-        activeSession = RecordingSession()
-        currentTranscript = ""
+        let session = RecordingSession()
+        activeSession = session
+        wireSessionCallbacks(sessionID: session.id)
 
         let settings = SettingsManager.shared.settings
         audioEngine.silenceThreshold = settings.silenceThreshold
@@ -105,7 +108,6 @@ final class DictationController: @unchecked Sendable {
 
         audioEngine.stop()
         let finalText = transcriber.stop()
-        currentTranscript = finalText
 
         if activeSession == nil {
             activeSession = RecordingSession()
@@ -129,14 +131,12 @@ final class DictationController: @unchecked Sendable {
         guard isRecording else {
             activeConfiguration = nil
             activeSession = nil
-            currentTranscript = ""
             return
         }
 
         isRecording = false
         audioEngine.stop()
         _ = transcriber.stop()
-        currentTranscript = ""
         activeConfiguration = nil
         activeSession = nil
     }
