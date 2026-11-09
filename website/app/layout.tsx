@@ -1,39 +1,34 @@
-import type { Metadata, Viewport } from "next";
-import "./globals.css";
+import type { Metadata, Viewport } from 'next'
+import { Analytics } from '@vercel/analytics/next'
+import './globals.css'
 
 export const metadata: Metadata = {
-  metadataBase: new URL("https://yapper.party"),
-  openGraph: {
-    title: "Yapper — Your voice. Your Mac.",
-    description:
-      "Private voice dictation for your Mac. Think it. Say it. There it is.",
-    url: "https://yapper.party",
-    siteName: "Yapper",
-    type: "website",
-  },
-  title: "Yapper — Your voice. Your Mac.",
-  description:
-    "Think it. Say it. There it is. Yapper is free, private voice dictation for your Mac. Local speech recognition, automatic cleanup, and a little less typing.",
+  title: 'Yapper',
+  description: 'Voice to text. Local. Private.',
+  generator: 'v0.app',
   icons: {
-    icon: "/images/yapper-mark.png",
-    apple: "/images/yapper-touch-icon.png",
+    icon: '/images/yapper-icon.png',
+    apple: '/images/yapper-icon.png',
   },
-};
+}
 
 export const viewport: Viewport = {
-  themeColor: "#f5f3eb",
-  width: "device-width",
+  themeColor: '#000000',
+  width: 'device-width',
   initialScale: 1,
-};
+}
 
 export default function RootLayout({
   children,
 }: Readonly<{
-  children: React.ReactNode;
+  children: React.ReactNode
 }>) {
   return (
-    <html lang="en">
-      <body className="antialiased">{children}</body>
+    <html lang="en" className="bg-black">
+      <body className="font-sans antialiased bg-black">
+        {children}
+        {process.env.NODE_ENV === 'production' && <Analytics />}
+      </body>
     </html>
-  );
+  )
 }

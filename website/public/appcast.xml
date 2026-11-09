@@ -3,12 +3,12 @@
     <channel>
         <title>Yapper</title>
         <item>
-            <title>0.2.0</title>
-            <pubDate>Mon, 09 Nov 2026 22:13:22 +0000</pubDate>
-            <sparkle:version>2</sparkle:version>
-            <sparkle:shortVersionString>0.2.0</sparkle:shortVersionString>
+            <title>0.1.0</title>
+            <pubDate>Sun, 03 May 2026 18:28:39 +0200</pubDate>
+            <sparkle:version>1</sparkle:version>
+            <sparkle:shortVersionString>0.1.0</sparkle:shortVersionString>
             <sparkle:minimumSystemVersion>15.0</sparkle:minimumSystemVersion>
-            <enclosure url="https://yapper.party/downloads/Yapper-0.2.0.dmg" length="15921003" type="application/octet-stream" sparkle:edSignature="IxVq7QTRV8PR7WABwLFEzhj/vLqVsz8ugPHb4A1pouoFnEJd8J8GZEvFduqIXOz3bOS335h+n9gCLFqjQoqcDQ=="/>
+            <enclosure url="https://yapper.party/downloads/Yapper-0.1.0.dmg" length="15870345" type="application/octet-stream" sparkle:edSignature="hvxEMl9CIEC4KeivWysJIgStiQ9g5eez4BjGzeerOG6hjnb+/wDWZv+qOd6MWzIjrkCLfK3Nq0iGlvdZT7UzAw=="/>
         </item>
     </channel>
 </rss>

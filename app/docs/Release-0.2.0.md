@@ -6,9 +6,6 @@ last-transcript copying, and cancellation that prevents late text insertion.
 The recording indicator responds to microphone levels before words arrive.
 Input selection and launch at login now apply the corresponding system settings.
 
-The website has direct installer links, a sample dictation demo, setup instructions,
-and first-launch help. Its demo uses prepared examples and does not access a microphone.
-
 ## Verify the app on macOS
 
 Run these commands from the repository root:
@@ -46,27 +43,6 @@ xcodebuild test -project app/Yapper.xcodeproj -scheme Yapper \
 The tests open setup, check its required permissions, and navigate the Audio,
 Keyboard, and About panes. The generated project uses the resolved SwiftPM graph.
 
-## Verify the site
-
-Use Node 22 or later:
-
-```bash
-cd website
-npm ci
-npx tsc --noEmit
-npm run build
-python3 -m http.server 4177 --bind 127.0.0.1 --directory out
-```
-
-In another terminal, run from the repository root:
-
-```bash
-website/scripts/verify-browser.sh http://127.0.0.1:4177
-```
-
-The browser check needs Chromium and `agent-browser` through npm. It checks the
-demo outputs, FAQ, responsive widths, and installer links.
-
 ## Stage and verify the release
 
 Download the `Yapper-macOS` artifact from the successful GitHub Actions run.
@@ -88,14 +64,12 @@ and Ed25519 signature against the public key in `Info.plist`.
 
 The CI installer is ad-hoc signed. Sparkle updates use the existing Ed25519 key.
 Apple notarization requires a Developer ID certificate and notary credentials
-that are not configured in this repository. The website explains macOS's
-**Open Anyway** flow for this early build.
+that are not configured in this repository. If macOS blocks the first launch, use **Open Anyway** in System Settings →
+Privacy & Security after attempting to open the installed app.
 
-Production is hosted through Coolify. Pushing this branch does not change the
-live site. Obtain explicit confirmation before merging into the production
-branch or triggering a Coolify deployment, as required by the VPS working
-agreements. After publication, rerun the browser and release checks against the
-live download and feed.
+The website remains at its original version. This release work is limited to the
+macOS app. Obtain explicit confirmation before triggering a Coolify deployment,
+as required by the VPS working agreements.
 
 ## Candidate evidence
 
