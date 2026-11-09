@@ -23,11 +23,14 @@ final class RealTranscriptionTests: XCTestCase {
         let transcriber = ParakeetTranscriber()
         try await transcriber.loadModel()
         try transcriber.start()
-        for offset in stride(from: 0, to: samples.count, by: 5120) {
-            transcriber.process(samples: Array(samples[offset..<min(offset + 5120, samples.count)]))
+        for repetition in 0..<2 {
+            if repetition > 0 { transcriber.process(samples: [Float](repeating: 0, count: 64_000)) }
+            for offset in stride(from: 0, to: samples.count, by: 5120) {
+                transcriber.process(samples: Array(samples[offset..<min(offset + 5120, samples.count)]))
+            }
         }
         let text = transcriber.stop().lowercased()
         XCTAssertTrue(text.contains("guarantee"), "Expected the recorded speech, got: \(text)")
-        XCTAssertTrue(text.contains("shipped tomorrow"), "Expected the end of the recording, got: \(text)")
+        XCTAssertEqual(text.components(separatedBy: "shipped tomorrow").count - 1, 2, "Expected both utterances after a pause, got: \(text)")
     }
 }

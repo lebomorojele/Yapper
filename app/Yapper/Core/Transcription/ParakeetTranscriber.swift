@@ -9,7 +9,7 @@ final class ParakeetTranscriber: TranscriberProtocol, @unchecked Sendable {
     private var model: ParakeetStreamingASRModel?
     private var session: StreamingSession?
     private var isRunning = false
-    private var accumulatedText = ""
+    private var transcript = StreamingTranscript()
 
     private let queue = DispatchQueue(label: "com.yapper.transcriber")
 
@@ -32,7 +32,7 @@ final class ParakeetTranscriber: TranscriberProtocol, @unchecked Sendable {
     func start() throws {
         try queue.sync {
             guard !isRunning else { return }
-            accumulatedText = ""
+            transcript = StreamingTranscript()
 
             guard let model else {
                 throw NSError(domain: "Yapper.Transcription", code: 1, userInfo: [NSLocalizedDescriptionKey: "The speech model is not ready. Try loading it again from the Yapper menu."])
@@ -49,23 +49,25 @@ final class ParakeetTranscriber: TranscriberProtocol, @unchecked Sendable {
         var result = ""
         queue.sync {
             guard isRunning else {
-                result = accumulatedText
+                result = transcript.text
                 return
             }
             isRunning = false
 
             if let session {
                 do {
-                    let finals = try session.finalize()
-                    for partial in finals where !partial.text.isEmpty {
-                        accumulatedText = partial.text
+                    // Keep finals emitted while draining the trailing audio, before finalize advances its EOU offset.
+                    if let model {
+                        let chunkSize = model.config.streaming.melFrames * model.config.hopLength
+                        consume(try session.pushAudio([Float](repeating: 0, count: chunkSize)))
                     }
+                    consume(try session.finalize())
                 } catch {
                     print("[Parakeet] Finalize error: \(error)")
                 }
             }
             session = nil
-            result = accumulatedText
+            result = transcript.text
         }
         onFinal?(result)
         return result
@@ -79,19 +81,19 @@ final class ParakeetTranscriber: TranscriberProtocol, @unchecked Sendable {
             guard let self, self.isRunning, let session = self.session else { return }
 
             do {
-                let partials = try session.pushAudio(samples)
-                for partial in partials {
-                    if partial.isFinal {
-                        self.accumulatedText = partial.text
-                        self.onFinal?(partial.text)
-                    } else if !partial.text.isEmpty {
-                        self.accumulatedText = partial.text
-                        self.onPartial?(partial.text)
-                    }
-                }
+                self.consume(try session.pushAudio(samples))
             } catch {
                 print("[Parakeet] pushAudio error: \(error)")
             }
         }
     }
+    private func consume(_ partials: [ParakeetStreamingASRModel.PartialTranscript]) {
+        for partial in partials where !partial.text.isEmpty {
+            transcript.update(segment: partial.segmentIndex, text: partial.text)
+            let completeText = transcript.text
+            onPartial?(completeText)
+            if partial.isFinal { onFinal?(completeText) }
+        }
+    }
+
 }

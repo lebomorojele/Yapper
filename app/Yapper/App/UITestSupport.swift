@@ -41,11 +41,14 @@ enum UITestSupport {
                 let transcriber = ParakeetTranscriber()
                 try await transcriber.loadModel()
                 try transcriber.start()
-                for offset in stride(from: 0, to: samples.count, by: 5120) {
-                    transcriber.process(samples: Array(samples[offset..<min(offset + 5120, samples.count)]))
+                for repetition in 0..<2 {
+                    if repetition > 0 { transcriber.process(samples: [Float](repeating: 0, count: 64_000)) }
+                    for offset in stride(from: 0, to: samples.count, by: 5120) {
+                        transcriber.process(samples: Array(samples[offset..<min(offset + 5120, samples.count)]))
+                    }
                 }
                 let text = transcriber.stop().lowercased()
-                guard text.contains("guarantee"), text.contains("shipped tomorrow") else {
+                guard text.contains("guarantee"), text.components(separatedBy: "shipped tomorrow").count - 1 == 2 else {
                     throw NSError(domain: "Yapper.BundleCheck", code: 3, userInfo: [NSLocalizedDescriptionKey: "Recorded speech did not match the expected phrases."])
                 }
                 FileHandle.standardOutput.write(Data("[Bundled speech] passed\n".utf8))
