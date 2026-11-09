@@ -1,6 +1,7 @@
 import AppKit
 import AVFoundation
 import SwiftUI
+import ServiceManagement
 
 enum PreferencesPane: String, CaseIterable, Identifiable {
     case general = "General"
@@ -26,11 +27,13 @@ final class PreferencesViewModel: ObservableObject {
     @Published var selectedPane: PreferencesPane = .general
     @Published var availableDevices: [AVCaptureDevice] = []
     @Published var inputLevel: Float = 0
+    @Published var loginItemError: String?
 
     private let audioLevelMonitor = SettingsAudioLevelMonitor()
 
     init(settings: Settings = SettingsManager.shared.settings) {
         self.settings = settings
+        self.settings.launchAtLogin = SMAppService.mainApp.status == .enabled
         refreshDevices()
         audioLevelMonitor.onLevelChange = { [weak self] level in
             guard let self else { return }
@@ -52,6 +55,23 @@ final class PreferencesViewModel: ObservableObject {
                 if persistChanges {
                     self.persist()
                 }
+            }
+        )
+    }
+
+    func launchAtLoginBinding() -> Binding<Bool> {
+        Binding(
+            get: { self.settings.launchAtLogin },
+            set: { enabled in
+                do {
+                    if enabled { try SMAppService.mainApp.register() }
+                    else { try SMAppService.mainApp.unregister() }
+                    self.loginItemError = nil
+                } catch {
+                    self.loginItemError = error.localizedDescription
+                }
+                self.settings.launchAtLogin = SMAppService.mainApp.status == .enabled
+                self.persist()
             }
         )
     }
@@ -198,11 +218,14 @@ private struct GeneralPreferencesPane: View {
                     }
                 }
 
-                Toggle("Launch at Login", isOn: model.binding(for: \.launchAtLogin))
+                Toggle("Launch at Login", isOn: model.launchAtLoginBinding())
+                if let error = model.loginItemError {
+                    Text(error).font(.caption).foregroundStyle(.red)
+                }
             } header: {
                 Text("General")
             } footer: {
-                Text("Accessibility inserts into the focused field. Clipboard is more compatible with stubborn apps, but briefly replaces the clipboard while pasting. Shorter snippets stay on the instant cleanup path; enhanced cleanup uses an optional local model for longer dictation.")
+                Text("Accessibility inserts into the focused field. Clipboard is more compatible with stubborn apps, but places the transcript on the clipboard and pastes it. Shorter snippets stay on the instant cleanup path; enhanced cleanup uses an optional local model for longer dictation.")
             }
         }
         .formStyle(.grouped)

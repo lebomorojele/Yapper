@@ -2,6 +2,7 @@ import Foundation
 import ParakeetStreamingASR
 
 final class ParakeetTranscriber: TranscriberProtocol, @unchecked Sendable {
+    var onLoadProgress: (@Sendable (Double) -> Void)?
     var onPartial: (@Sendable (String) -> Void)?
     var onFinal: (@Sendable (String) -> Void)?
 
@@ -17,7 +18,8 @@ final class ParakeetTranscriber: TranscriberProtocol, @unchecked Sendable {
     func loadModel() async throws {
         let m = try await ParakeetStreamingASRModel.fromPretrained(
             modelId: ParakeetStreamingASRModel.defaultModelId
-        ) { progress, status in
+        ) { [weak self] progress, status in
+            self?.onLoadProgress?(progress)
             print("[Parakeet] \(status) (\(Int(progress * 100))%)")
         }
         try m.warmUp()

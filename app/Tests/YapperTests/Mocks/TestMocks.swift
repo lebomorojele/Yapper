@@ -27,6 +27,7 @@ final class MockAudioEngine: AudioEngineProtocol {
 }
 
 final class MockTranscriber: TranscriberProtocol {
+    var onLoadProgress: (@Sendable (Double) -> Void)?
     var onPartial: (@Sendable (String) -> Void)?
     var onFinal: (@Sendable (String) -> Void)?
 
@@ -137,6 +138,7 @@ final class MockDictationController: DictationControlling, @unchecked Sendable {
     var onRecordingStopped: (@Sendable () -> Void)?
     var onError: (@Sendable (Error) -> Void)?
     var onAudioMeter: (@Sendable (AudioMeter) -> Void)?
+    var onModelProgress: (@Sendable (Double) -> Void)?
     var onModelLoaded: (@Sendable () -> Void)?
 
     private(set) var startConfigurations: [RecordingSessionConfiguration] = []

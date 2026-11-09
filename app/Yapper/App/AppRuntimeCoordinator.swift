@@ -71,6 +71,9 @@ final class AppRuntimeCoordinator {
     }
 
     private func bindCallbacks() {
+        dictationController.onModelProgress = { [weak self] progress in
+            Task { @MainActor in self?.state.modelDownloadProgress = max(0, min(1, progress)) }
+        }
         hotkeyManager.onGesture = { [weak self] gesture in
             Task { @MainActor in
                 self?.handleGesture(gesture)

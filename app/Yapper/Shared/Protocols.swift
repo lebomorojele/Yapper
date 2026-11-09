@@ -7,6 +7,7 @@ protocol DictationControlling: AnyObject, Sendable {
     var onError: (@Sendable (Error) -> Void)? { get set }
     var onAudioMeter: (@Sendable (AudioMeter) -> Void)? { get set }
     var onModelLoaded: (@Sendable () -> Void)? { get set }
+    var onModelProgress: (@Sendable (Double) -> Void)? { get set }
 
     func loadModel() async
     func startRecording(configuration: RecordingSessionConfiguration)
@@ -44,6 +45,7 @@ protocol AudioEngineProtocol {
 }
 
 protocol TranscriberProtocol {
+    var onLoadProgress: (@Sendable (Double) -> Void)? { get set }
     var onPartial: (@Sendable (String) -> Void)? { get set }
     var onFinal: (@Sendable (String) -> Void)? { get set }
 

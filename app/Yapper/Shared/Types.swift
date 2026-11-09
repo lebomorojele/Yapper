@@ -102,6 +102,7 @@ struct AppRuntimeState: Equatable, Sendable {
     var permissions: PermissionSnapshot = PermissionSnapshot()
     var hotkeyMonitoringStatus: HotkeyMonitoringStatus = .stopped
     var modelReady = false
+    var modelDownloadProgress: Double = 0
     var session: RecordingSession? = nil
     var recordingStartTime: Date? = nil
 

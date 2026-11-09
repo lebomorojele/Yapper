@@ -75,8 +75,10 @@ private struct WelcomeView: View {
                     Text(message ?? "The speech model could not load.").lineLimit(3)
                     Button("Retry", action: model.retry)
                 } else {
-                    ProgressView().controlSize(.small)
-                    Text("Preparing the speech model. First launch needs internet.")
+                    VStack(alignment: .leading, spacing: 7) {
+                        ProgressView(value: model.state.modelDownloadProgress)
+                        Text("Preparing the speech model · \(Int(model.state.modelDownloadProgress * 100))%. First launch needs internet.")
+                    }
                 }
             }.font(.system(size: 11)).foregroundStyle(.secondary)
             Spacer(minLength: 0)

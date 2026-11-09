@@ -1,5 +1,7 @@
 import Foundation
 import AVFoundation
+import AudioToolbox
+import CoreAudio
 @preconcurrency import AVFAudio
 
 final class AudioEngine: AudioEngineProtocol, @unchecked Sendable {
@@ -59,6 +61,7 @@ final class AudioEngine: AudioEngineProtocol, @unchecked Sendable {
             engine = eng
 
             let input = eng.inputNode
+            try selectInputDevice(on: input)
             let inputFormat = input.outputFormat(forBus: 0)
 
             guard inputFormat.sampleRate > 0, inputFormat.channelCount > 0,
@@ -109,6 +112,46 @@ final class AudioEngine: AudioEngineProtocol, @unchecked Sendable {
     }
 
     // MARK: - Internal
+
+    private func selectInputDevice(on input: AVAudioInputNode) throws {
+        guard let selectedUID = SettingsManager.shared.settings.selectedAudioDeviceId else { return }
+        var address = AudioObjectPropertyAddress(
+            mSelector: kAudioHardwarePropertyDevices,
+            mScope: kAudioObjectPropertyScopeGlobal,
+            mElement: kAudioObjectPropertyElementMain
+        )
+        var size: UInt32 = 0
+        guard AudioObjectGetPropertyDataSize(AudioObjectID(kAudioObjectSystemObject), &address, 0, nil, &size) == noErr, size > 0 else {
+            throw microphoneSelectionError()
+        }
+        var devices = [AudioDeviceID](repeating: 0, count: Int(size) / MemoryLayout<AudioDeviceID>.size)
+        let status = devices.withUnsafeMutableBytes { bytes in
+            AudioObjectGetPropertyData(AudioObjectID(kAudioObjectSystemObject), &address, 0, nil, &size, bytes.baseAddress!)
+        }
+        guard status == noErr else { throw microphoneSelectionError() }
+        for device in devices {
+            var uidAddress = AudioObjectPropertyAddress(
+                mSelector: kAudioDevicePropertyDeviceUID,
+                mScope: kAudioObjectPropertyScopeGlobal,
+                mElement: kAudioObjectPropertyElementMain
+            )
+            var uid: CFString = "" as CFString
+            var uidSize = UInt32(MemoryLayout<CFString>.size)
+            guard AudioObjectGetPropertyData(device, &uidAddress, 0, nil, &uidSize, &uid) == noErr,
+                  uid as String == selectedUID else { continue }
+            guard let unit = input.audioUnit else { throw microphoneSelectionError() }
+            var deviceID = device
+            guard AudioUnitSetProperty(unit, kAudioOutputUnitProperty_CurrentDevice, kAudioUnitScope_Global, 0, &deviceID, UInt32(MemoryLayout<AudioDeviceID>.size)) == noErr else {
+                throw microphoneSelectionError()
+            }
+            return
+        }
+        throw microphoneSelectionError()
+    }
+
+    private func microphoneSelectionError() -> NSError {
+        NSError(domain: "Yapper.Audio", code: 3, userInfo: [NSLocalizedDescriptionKey: "The selected microphone is unavailable. Reconnect it or choose System Default in Yapper's Audio settings."])
+    }
 
     private func processBuffer(_ buffer: AVAudioPCMBuffer, inputFormat: AVAudioFormat) {
         guard let targetFormat else { return }

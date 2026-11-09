@@ -33,10 +33,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             self.setupFloatingPanel()
             self.bindRuntime()
             SparkleUpdateController.shared.start()
-            self.runtime.start()
             if !UITestSupport.isEnabled && !UserDefaults.standard.bool(forKey: WelcomeWindowController.completedKey) {
                 self.openWelcome()
             }
+            self.runtime.start()
             NSApp.setActivationPolicy(UITestSupport.isEnabled ? .regular : .accessory)
             if UITestSupport.shouldOpenSettingsOnLaunch() {
                 SettingsWindowController.shared.show()
@@ -177,12 +177,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             return "Yapper: \(message ?? "Something went wrong. Try again.")"
         }
         if !state.modelReady {
-            return "Yapper: Loading model..."
+            return "Yapper: Preparing speech model \(Int(state.modelDownloadProgress * 100))%"
         }
 
         switch state.recordingPhase {
         case .loading:
-            return "Yapper: Loading model..."
+            return "Yapper: Preparing speech model \(Int(state.modelDownloadProgress * 100))%"
         case .recording:
             return "Yapper: Listening"
         case .processing:

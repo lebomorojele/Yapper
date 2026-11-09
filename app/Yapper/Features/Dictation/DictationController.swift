@@ -12,6 +12,7 @@ final class DictationController: @unchecked Sendable {
     var onRecordingStopped: (@Sendable () -> Void)?
     var onError: (@Sendable (Error) -> Void)?
     var onAudioMeter: (@Sendable (AudioMeter) -> Void)?
+    var onModelProgress: (@Sendable (Double) -> Void)?
     var onModelLoaded: (@Sendable () -> Void)?
 
     private(set) var isModelLoaded = false
@@ -36,6 +37,9 @@ final class DictationController: @unchecked Sendable {
     }
 
     private func wireCallbacks() {
+        transcriber.onLoadProgress = { [weak self] progress in
+            self?.onModelProgress?(progress)
+        }
         audioEngine.onAudio = { [weak self] samples in
             self?.transcriber.process(samples: samples)
         }
