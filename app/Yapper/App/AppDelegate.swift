@@ -32,7 +32,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             self.setupMenuBar()
             self.setupFloatingPanel()
             self.bindRuntime()
-            SparkleUpdateController.shared.start()
+            if UserDefaults.standard.bool(forKey: WelcomeWindowController.completedKey) {
+                SparkleUpdateController.shared.start()
+            }
             if UITestSupport.shouldOpenWelcomeOnLaunch() || (!UITestSupport.isEnabled && !UserDefaults.standard.bool(forKey: WelcomeWindowController.completedKey)) {
                 self.openWelcome()
             }

@@ -18,6 +18,7 @@ final class WelcomeWindowController: NSWindowController {
         window.contentView = NSHostingView(rootView: WelcomeView(model: model, finish: { [weak self] in
             UserDefaults.standard.set(true, forKey: Self.completedKey)
             self?.close()
+            SparkleUpdateController.shared.start()
         }))
         window.center()
     }

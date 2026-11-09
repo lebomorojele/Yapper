@@ -14,7 +14,7 @@ final class SparkleUpdateController {
     private init() {}
 
     func start() {
-        guard isAvailable, updaterController == nil else { return }
+        guard isAvailable, !UITestSupport.isEnabled, updaterController == nil else { return }
         updaterController = SPUStandardUpdaterController(
             startingUpdater: true,
             updaterDelegate: nil,

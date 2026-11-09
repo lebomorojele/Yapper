@@ -58,8 +58,6 @@ final class AudioEngine: AudioEngineProtocol, @unchecked Sendable {
             guard !isRunning else { return }
             
             let eng = AVAudioEngine()
-            engine = eng
-
             let input = eng.inputNode
             try selectInputDevice(on: input)
             let inputFormat = input.outputFormat(forBus: 0)
@@ -75,6 +73,7 @@ final class AudioEngine: AudioEngineProtocol, @unchecked Sendable {
                 throw NSError(domain: "Yapper.Audio", code: 2, userInfo: [NSLocalizedDescriptionKey: "This microphone format could not be converted. Try another input device."])
             }
 
+            engine = eng
             input.installTap(onBus: 0, bufferSize: bufferSize, format: inputFormat) { [weak self] buffer, _ in
                 self?.processBuffer(buffer, inputFormat: inputFormat)
             }
@@ -135,10 +134,11 @@ final class AudioEngine: AudioEngineProtocol, @unchecked Sendable {
                 mScope: kAudioObjectPropertyScopeGlobal,
                 mElement: kAudioObjectPropertyElementMain
             )
-            var uid: CFString = "" as CFString
-            var uidSize = UInt32(MemoryLayout<CFString>.size)
+            var uid: Unmanaged<CFString>?
+            var uidSize = UInt32(MemoryLayout<Unmanaged<CFString>?>.size)
             guard AudioObjectGetPropertyData(device, &uidAddress, 0, nil, &uidSize, &uid) == noErr,
-                  uid as String == selectedUID else { continue }
+                  let uid else { continue }
+            guard uid.takeRetainedValue() as String == selectedUID else { continue }
             guard let unit = input.audioUnit else { throw microphoneSelectionError() }
             var deviceID = device
             guard AudioUnitSetProperty(unit, kAudioOutputUnitProperty_CurrentDevice, kAudioUnitScope_Global, 0, &deviceID, UInt32(MemoryLayout<AudioDeviceID>.size)) == noErr else {
