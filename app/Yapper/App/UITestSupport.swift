@@ -48,7 +48,7 @@ enum UITestSupport {
                 guard text.contains("guarantee"), text.contains("shipped tomorrow") else {
                     throw NSError(domain: "Yapper.BundleCheck", code: 3, userInfo: [NSLocalizedDescriptionKey: "Recorded speech did not match the expected phrases."])
                 }
-                print("[Bundled speech] passed")
+                FileHandle.standardOutput.write(Data("[Bundled speech] passed\n".utf8))
             } catch {
                 print("[Bundled speech] failed: \(error.localizedDescription)")
             }
