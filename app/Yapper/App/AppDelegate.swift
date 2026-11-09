@@ -29,6 +29,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     nonisolated func applicationDidFinishLaunching(_ notification: Notification) {
         Task { @MainActor in
             UITestSupport.configureIfNeeded()
+            if UITestSupport.runBundledSpeechCheckIfRequested() { return }
             self.setupMenuBar()
             self.setupFloatingPanel()
             self.bindRuntime()

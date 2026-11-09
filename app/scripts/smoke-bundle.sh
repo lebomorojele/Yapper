@@ -20,4 +20,18 @@ for screen in SETTINGS WELCOME; do
   cleanup
   owned_pid=""
 done
-echo 'Packaged Yapper launched for settings and welcome. Inspect the captured screens.'
+env YAPPER_UI_TEST_MODE=1 YAPPER_VERIFY_AUDIO_PATH="$app_root/Tests/YapperTests/Fixtures/speech.wav" "$binary" > "$app_root/dist/speech-smoke.log" 2>&1 &
+owned_pid=$!
+for attempt in {1..180}; do
+  if ! kill -0 "$owned_pid" 2>/dev/null; then break; fi
+  sleep 1
+done
+if kill -0 "$owned_pid" 2>/dev/null; then
+  echo 'Bundled speech verification timed out' >&2
+  exit 1
+fi
+wait "$owned_pid"
+owned_pid=""
+cat "$app_root/dist/speech-smoke.log"
+grep -Fq '[Bundled speech] passed' "$app_root/dist/speech-smoke.log"
+echo 'Packaged Yapper launched native screens and transcribed real speech.'

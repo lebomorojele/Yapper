@@ -39,6 +39,7 @@ jobs:
             app/dist/*.png
             app/dist/*-smoke.log
             app/dist/sparkle/appcast.xml
+            app/Package.resolved
           if-no-files-found: error
   website:
     runs-on: ubuntu-latest
