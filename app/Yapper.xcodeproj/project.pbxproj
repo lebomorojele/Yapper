@@ -21,7 +21,9 @@
 		6D530D260C7B39B4E98DABF9 /* PermissionManagerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B55BCF6C17D3B88759D8D950 /* PermissionManagerTests.swift */; };
 		6DFFF15E0D3F2D3683E83197 /* AppResourceLocator.swift in Sources */ = {isa = PBXBuildFile; fileRef = F0EE47F3922E090DB5D6AC9C /* AppResourceLocator.swift */; };
 		6FCE8E7A9DD4B5DCA493D128 /* PillContentViewTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A3EF28654943FFF69FA20D6 /* PillContentViewTests.swift */; };
+		7055AA285D7DF922C2C19477 /* StreamingTranscript.swift in Sources */ = {isa = PBXBuildFile; fileRef = EF16867F14537A817BA1783D /* StreamingTranscript.swift */; };
 		78109ED55763B109B43CB412 /* RealTranscriptionTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 28FDE93BF6BCBD005B7197BD /* RealTranscriptionTests.swift */; };
+		902A5916F1B08A2AF9809738 /* StreamingTranscriptTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 84F1B7F5198340489F13C8D1 /* StreamingTranscriptTests.swift */; };
 		917C8F2790A8564AFE412180 /* FloatingPanel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 408AD7825754A50595B2F164 /* FloatingPanel.swift */; };
 		93AC8F10D0B87C090B37B8B2 /* TextInserterTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = BFE7E3CC812A8D207C64249A /* TextInserterTests.swift */; };
 		94391811AE97E5F144C66E7A /* TextInserter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 20EEECBBE1FB7F446A9A3349 /* TextInserter.swift */; };
@@ -96,6 +98,7 @@
 		6FBFFD168B6D8569B2AACBB7 /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
 		71610F02772B3E2D036E84DA /* SoundManagerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SoundManagerTests.swift; sourceTree = "<group>"; };
 		7E09282F41773DBDC7B78FD4 /* AudioEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AudioEngine.swift; sourceTree = "<group>"; };
+		84F1B7F5198340489F13C8D1 /* StreamingTranscriptTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StreamingTranscriptTests.swift; sourceTree = "<group>"; };
 		8564FCE55200CED4C726C305 /* PermissionManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PermissionManager.swift; sourceTree = "<group>"; };
 		97374F08F226A605070C83D2 /* DictationController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DictationController.swift; sourceTree = "<group>"; };
 		9A3EF28654943FFF69FA20D6 /* PillContentViewTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PillContentViewTests.swift; sourceTree = "<group>"; };
@@ -113,6 +116,7 @@
 		CDFA05761035F6FF0EA0BF3D /* HotkeyManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HotkeyManager.swift; sourceTree = "<group>"; };
 		E6B3C9C6CD266334D2CCD693 /* Sounds */ = {isa = PBXFileReference; lastKnownFileType = folder; name = Sounds; path = Yapper/Sounds; sourceTree = SOURCE_ROOT; };
 		E77C589ECCA33EB07C563CBB /* SettingsWindowController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsWindowController.swift; sourceTree = "<group>"; };
+		EF16867F14537A817BA1783D /* StreamingTranscript.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StreamingTranscript.swift; sourceTree = "<group>"; };
 		EFAE4405EE17CA2DC36DC245 /* SoundManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SoundManager.swift; sourceTree = "<group>"; };
 		F0EE47F3922E090DB5D6AC9C /* AppResourceLocator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppResourceLocator.swift; sourceTree = "<group>"; };
 		F2CB98B99EAFBA4793B84C31 /* AppRuntimeCoordinatorTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppRuntimeCoordinatorTests.swift; sourceTree = "<group>"; };
@@ -148,6 +152,7 @@
 			isa = PBXGroup;
 			children = (
 				A64002362B1F2CFAEFC6A27E /* ParakeetTranscriber.swift */,
+				EF16867F14537A817BA1783D /* StreamingTranscript.swift */,
 			);
 			path = Transcription;
 			sourceTree = "<group>";
@@ -246,6 +251,7 @@
 				1CE3784240D590E96CB14CD3 /* HotkeyManagerTests.swift */,
 				B55BCF6C17D3B88759D8D950 /* PermissionManagerTests.swift */,
 				71610F02772B3E2D036E84DA /* SoundManagerTests.swift */,
+				84F1B7F5198340489F13C8D1 /* StreamingTranscriptTests.swift */,
 				4A3A8C3469D48BB7CA66256C /* TextCleanupProcessorTests.swift */,
 				BFE7E3CC812A8D207C64249A /* TextInserterTests.swift */,
 			);
@@ -516,6 +522,7 @@
 				970B7D7A5328ED4E9B65E3EF /* SettingsWindowController.swift in Sources */,
 				1E86943453DC231FD3AC6284 /* SoundManager.swift in Sources */,
 				CC82C66F1688CE2F46E23C5A /* SparkleUpdateController.swift in Sources */,
+				7055AA285D7DF922C2C19477 /* StreamingTranscript.swift in Sources */,
 				2B4EC7077C4120D1A0BE7615 /* TextCleanupProcessor.swift in Sources */,
 				94391811AE97E5F144C66E7A /* TextInserter.swift in Sources */,
 				0B01D22158402DCF6922FADE /* Types.swift in Sources */,
@@ -538,6 +545,7 @@
 				78109ED55763B109B43CB412 /* RealTranscriptionTests.swift in Sources */,
 				BC2139E3779CE0F229E5301D /* SettingsTests.swift in Sources */,
 				F36C58BA8A785783113B3D7C /* SoundManagerTests.swift in Sources */,
+				902A5916F1B08A2AF9809738 /* StreamingTranscriptTests.swift in Sources */,
 				C4B796B092262F62A9648D4A /* TestMocks.swift in Sources */,
 				EF046181E984308D7B3FAB4D /* TextCleanupProcessorTests.swift in Sources */,
 				93AC8F10D0B87C090B37B8B2 /* TextInserterTests.swift in Sources */,

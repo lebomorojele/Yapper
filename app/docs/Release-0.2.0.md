@@ -19,8 +19,8 @@ app/scripts/smoke-bundle.sh
 ```
 
 The integration check downloads the production speech model and transcribes a
-20-second recording through `ParakeetTranscriber`. It checks recognized phrases
-near the end of the recording. It does not test microphone hardware, hotkey access,
+20-second recording through `ParakeetTranscriber`. It checks both occurrences of a phrase
+when the recording repeats after a pause. It does not test microphone hardware, hotkey access,
 or insertion into third-party apps. Run `app/docs/Hotkey-QA-Checklist.md` on a Mac
 with microphone and accessibility permissions for those checks.
 
@@ -71,23 +71,23 @@ as required by the VPS working agreements.
 
 ## Verified release
 
-[Run 42713842237](https://github.com/lebomorojele/Yapper/actions/runs/42713842237)
+[Run 42716065408](https://github.com/lebomorojele/Yapper/actions/runs/42716065408)
 passed all app checks:
 
-- 47 unit tests, including cancellation of a real cleanup child process.
-- Production Core ML recognition of the 20-second speech recording.
-- Recognition inside the packaged app with the build directory hidden.
+- 52 unit tests, including segment accumulation and cancellation of a real cleanup process.
+- Production Core ML recognition of two 20-second utterances separated by four seconds of silence.
+- The same repeated-speech check inside the packaged app with the build directory hidden.
 - Native setup and settings UI tests, including Audio, Keyboard, and About navigation.
 - Release compilation, native window capture, and DMG packaging.
 
-The installer is 15,913,564 bytes. SHA-256:
+The installer is 15,918,916 bytes. SHA-256:
 
 ```text
-743332b0b9179a754f386786f6ec48e8d3610eedd61b4b642b7abe28e6da0fcb
+75e5ac58479b9b7478a26f929692c7f842f194587bd9ebebd4da2d8eea06ccb2
 ```
 
 The appcast signature verifies against the public key embedded in the app's
-source plist. The installed app sources match commit `d7d8d3b`. The website is
+source plist. The installed app sources match commit `833e02f`. The website is
 unchanged from `main`.
 
 Pre-existing verification problems corrected during this release were the
