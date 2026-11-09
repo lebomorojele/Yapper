@@ -125,6 +125,9 @@ export function VoiceDemo() {
           {phase === "done" ? "↻" : "fn"}
         </span>
       </button>
+      <span className="sr-only" role="status">
+        {phase === "done" ? example.result : ""}
+      </span>
       <p className="demo-disclosure">
         {phase === "listening"
           ? "An example of the Yapper flow"

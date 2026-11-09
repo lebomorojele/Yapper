@@ -4,6 +4,11 @@ on:
     branches: [main, feat/yapper-evening-release]
   pull_request:
   workflow_dispatch:
+    inputs:
+      native_only:
+        description: Run only the native UI checks
+        type: boolean
+        default: false
 concurrency:
   group: yapper-verify-${{ github.head_ref || github.ref_name }}
   cancel-in-progress: true
@@ -11,6 +16,7 @@ permissions:
   contents: read
 jobs:
   macos:
+    if: ${{ github.event_name != 'workflow_dispatch' || !inputs.native_only }}
     runs-on: macos-15
     timeout-minutes: 40
     steps:
@@ -42,6 +48,7 @@ jobs:
             app/Package.resolved
           if-no-files-found: error
   website:
+    if: ${{ github.event_name != 'workflow_dispatch' || !inputs.native_only }}
     runs-on: ubuntu-latest
     defaults:
       run:

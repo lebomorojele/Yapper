@@ -13,19 +13,17 @@ final class YapperUITests: XCTestCase {
         app.launchEnvironment["YAPPER_OPEN_SETTINGS_ON_LAUNCH"] = "1"
         app.launch()
 
-        XCTAssertTrue(element("settings.root").waitForExistence(timeout: 10))
-        XCTAssertTrue(element("settings.pane.general").exists)
+        XCTAssertTrue(app.windows.firstMatch.waitForExistence(timeout: 10))
+        XCTAssertTrue(labeled("Clean punctuation and casing").exists)
 
-        element("settings.sidebar.audio").click()
-        XCTAssertTrue(element("settings.pane.audio").waitForExistence(timeout: 2))
-        XCTAssertTrue(app.staticTexts["Input Device"].exists)
+        app.staticTexts["Audio"].firstMatch.click()
+        XCTAssertTrue(labeled("Auto-stop when quiet").waitForExistence(timeout: 2))
 
-        element("settings.sidebar.keyboard").click()
-        XCTAssertTrue(element("settings.pane.keyboard").waitForExistence(timeout: 2))
+        app.staticTexts["Keyboard"].firstMatch.click()
+        XCTAssertTrue(app.staticTexts["Fn / Globe"].waitForExistence(timeout: 2))
 
-        element("settings.sidebar.about").click()
-        XCTAssertTrue(element("settings.pane.about").waitForExistence(timeout: 2))
-        XCTAssertTrue(app.staticTexts["Version 0.2.0"].exists)
+        app.staticTexts["About"].firstMatch.click()
+        XCTAssertTrue(app.staticTexts["Version 0.2.0"].waitForExistence(timeout: 2))
         keepScreenshot("Native settings")
     }
 
@@ -40,6 +38,10 @@ final class YapperUITests: XCTestCase {
         XCTAssertTrue(app.staticTexts["Input Monitoring"].exists)
         XCTAssertFalse(app.buttons["Let's yap"].isEnabled)
         keepScreenshot("Native setup")
+    }
+
+    private func labeled(_ label: String) -> XCUIElement {
+        app.descendants(matching: .any).matching(NSPredicate(format: "label == %@", label)).firstMatch
     }
 
     private func element(_ identifier: String) -> XCUIElement {

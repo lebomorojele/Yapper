@@ -4,7 +4,7 @@
   --paper: #f5f3eb;
   --ink: #262720;
   --muted: #65655c;
-  --red: #d74028;
+  --red: #c93722;
   --line: #d8d7cc;
   --font-sans: "Helvetica Neue", Helvetica, sans-serif;
   --font-display:
@@ -322,7 +322,7 @@ h2 em {
   border-bottom: 1px solid #e8e8de;
   padding: 16px 20px;
   font-size: 11px;
-  color: #808173;
+  color: #626756;
 }
 .traffic-lights {
   display: flex;
@@ -346,13 +346,13 @@ h2 em {
   font-size: 12px;
 }
 .letter-meta > span:first-child {
-  color: #949588;
+  color: #626756;
 }
 .letter-date {
   margin-left: auto;
   font-size: 9px;
   letter-spacing: 1px;
-  color: #929484;
+  color: #626756;
 }
 .letter-body {
   padding: 29px 40px 30px;
@@ -360,7 +360,7 @@ h2 em {
 }
 .letter-greeting {
   font-size: 12px;
-  color: #858778;
+  color: #626756;
 }
 .letter-body p {
   font-family: var(--font-display);
@@ -372,7 +372,7 @@ h2 em {
   min-height: 115px;
 }
 .placeholder-text {
-  color: #a3a596;
+  color: #626756;
 }
 .typing-caret {
   display: inline-block;
@@ -391,7 +391,7 @@ h2 em {
   justify-content: space-between;
   padding: 14px 24px;
   border-top: 1px solid #e8e8de;
-  color: #949588;
+  color: #626756;
   font-size: 10px;
 }
 .demo-pill {
@@ -459,7 +459,7 @@ h2 em {
   animation: wave 0.6s ease-in-out infinite alternate;
 }
 .demo-disclosure {
-  color: #757b67;
+  color: #5f6654;
   font-size: 10px;
   text-align: center;
   margin-top: 16px;
@@ -483,7 +483,7 @@ h2 em {
   margin: 10px auto 0;
   display: flex;
   justify-content: space-between;
-  color: #6a705f;
+  color: #5f6654;
   border-top: 1px solid #cdd2c0;
   padding-top: 20px;
   font-size: 9px;
@@ -539,7 +539,7 @@ h2 em {
   position: absolute;
   right: 25px;
   top: 40px;
-  color: #959487;
+  color: #6e6e62;
 }
 .details-grid h3 {
   font-size: 23px;
@@ -694,7 +694,7 @@ h2 em {
   background: white;
 }
 .download-section .download-note {
-  color: #ffe4d5b3;
+  color: #fff6e9;
 }
 .download-flower {
   position: absolute;
@@ -709,7 +709,7 @@ h2 em {
 .release-note {
   font-size: 10px;
   margin-top: 45px;
-  color: #ffe4d5c9;
+  color: #fff6e9;
 }
 .release-note a {
   text-decoration: underline;

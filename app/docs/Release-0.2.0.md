@@ -27,9 +27,24 @@ near the end of the recording. It does not test microphone hardware, hotkey acce
 or insertion into third-party apps. Run `app/docs/Hotkey-QA-Checklist.md` on a Mac
 with microphone and accessibility permissions for those checks.
 
-`smoke-bundle.sh` launches the packaged app twice and captures the setup and
-settings windows. UI test mode suppresses model downloads and permission prompts.
+`smoke-bundle.sh` captures the setup and settings windows, then transcribes the
+recording inside the actual app bundle with `.build` hidden. UI test mode suppresses
+permission prompts. The speech check uses the production model cache.
 Inspect `app/dist/welcome.png` and `app/dist/settings.png` after the script passes.
+
+## Verify native UI behavior
+
+Install XcodeGen, then generate the project and run the hosted UI tests:
+
+```bash
+brew install xcodegen
+app/scripts/generate-project.sh
+xcodebuild test -project app/Yapper.xcodeproj -scheme Yapper \
+  -destination 'platform=macOS' -only-testing:YapperUITests CODE_SIGNING_ALLOWED=NO
+```
+
+The tests open setup, check its required permissions, and navigate the Audio,
+Keyboard, and About panes. The generated project uses the resolved SwiftPM graph.
 
 ## Verify the site
 
@@ -81,3 +96,22 @@ live site. Obtain explicit confirmation before merging into the production
 branch or triggering a Coolify deployment, as required by the VPS working
 agreements. After publication, rerun the browser and release checks against the
 live download and feed.
+
+## Candidate evidence
+
+The packaged candidate was built and verified in
+[run 42708767424](https://github.com/lebomorojele/Yapper/actions/runs/42708767424).
+Its macOS job passed unit tests, real model inference, isolated bundle inference,
+native screen capture, and DMG packaging. The original native UI check in that run
+failed because it queried a container identifier SwiftUI does not expose.
+The corrected UI check uses visible windows and controls.
+
+The installer is 15,921,003 bytes. SHA-256:
+
+```text
+81204fd91ced00f6fd20e837de577b919e43077d5ac2eb50876bfdab899937a1
+```
+
+The appcast signature verifies against the public key embedded in the app's
+source plist. The installed app sources match commit `0c3949b`. The staged
+lockfile records the complete dependency graph that the successful build used.
